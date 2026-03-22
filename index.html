@@ -3,1818 +3,880 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RideLog — GST & Tax Assistant</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
-<!-- Firebase compat SDKs — loaded before any app code -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<title>RideLog — Income Tracker for Australian Rideshare Drivers</title>
+<meta name="description" content="Track your Uber and DiDi income and expenses. Generate income statements and GST summaries. Built for Australian rideshare drivers." />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0d0f14;
-    --surface: #151820;
-    --surface2: #1c2030;
-    --border: #252a38;
-    --accent: #00e5a0;
-    --accent2: #ff6b35;
-    --accent3: #4d9fff;
-    --text: #e8ecf4;
-    --text-muted: #6b7490;
-    --text-dim: #3d4460;
-    --danger: #ff4757;
-    --uber: #00e5a0;
-    --didi: #ff6b35;
-    --other: #4d9fff;
-    --radius: 12px;
-    --radius-lg: 20px;
+    --bg: #f0f9ff;
+    --surface: #ffffff;
+    --surface2: #e0f2fe;
+    --border: #bae6fd;
+    --accent: #0ea5e9;
+    --accent-dark: #0284c7;
+    --accent2: #f97316;
+    --text: #0c1a29;
+    --text-muted: #4a6fa5;
+    --text-dim: #93c5e8;
+    --danger: #ef4444;
+    --green: #16a34a;
+    --radius: 14px;
+    --radius-lg: 24px;
+    --shadow: 0 4px 24px rgba(14,165,233,0.10);
+    --shadow-lg: 0 16px 64px rgba(14,165,233,0.14);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'DM Mono', monospace;
+    font-family: 'DM Sans', sans-serif;
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
     overflow-x: hidden;
   }
 
-  /* ─── NOISE TEXTURE OVERLAY ─── */
+  /* ── DOT GRID ── */
   body::before {
     content: '';
     position: fixed; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    background-image: radial-gradient(circle, #7dd3fc 1px, transparent 1px);
+    background-size: 32px 32px;
     pointer-events: none;
-    z-index: 9999;
-    opacity: 0.4;
+    opacity: 0.25;
+    z-index: 0;
   }
 
-  /* ─── SCREENS ─── */
-  .screen { display: none; min-height: 100vh; }
-  .screen.active { display: flex; flex-direction: column; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
-  /* ─── ANIMATIONS ─── */
+  /* ── ANIMATIONS ── */
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(24px); }
+    from { opacity: 0; transform: translateY(28px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(0,229,160,0.2); }
-    50%       { box-shadow: 0 0 40px rgba(0,229,160,0.4); }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-8px); }
   }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
+  @keyframes pulse-ring {
+    0%   { box-shadow: 0 0 0 0 rgba(14,165,233,0.4); }
+    70%  { box-shadow: 0 0 0 12px rgba(14,165,233,0); }
+    100% { box-shadow: 0 0 0 0 rgba(14,165,233,0); }
   }
-  .fade-up { animation: fadeUp 0.5s ease forwards; }
-  .delay-1 { animation-delay: 0.1s; opacity: 0; }
-  .delay-2 { animation-delay: 0.2s; opacity: 0; }
-  .delay-3 { animation-delay: 0.3s; opacity: 0; }
-  .delay-4 { animation-delay: 0.4s; opacity: 0; }
+  @keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .fade-up { opacity: 0; animation: fadeUp 0.6s ease forwards; }
+  .d1 { animation-delay: 0.1s; }
+  .d2 { animation-delay: 0.2s; }
+  .d3 { animation-delay: 0.3s; }
+  .d4 { animation-delay: 0.4s; }
+  .d5 { animation-delay: 0.5s; }
+  .d6 { animation-delay: 0.6s; }
 
-  /* ─── LOGIN SCREEN ─── */
-  #screen-login {
-    align-items: center;
-    justify-content: center;
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, #0a2a1a 0%, var(--bg) 70%);
-    position: relative;
-  }
-  .login-grid-bg {
-    position: absolute; inset: 0;
-    background-image:
-      linear-gradient(rgba(0,229,160,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,229,160,0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-  }
-  .login-card {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    max-width: 420px;
-    width: 90%;
-    padding: 56px 48px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
-  }
-  .logo-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px; height: 64px;
-    background: linear-gradient(135deg, var(--accent), #00b87a);
-    border-radius: 16px;
-    margin-bottom: 24px;
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 24px;
-    color: #000;
-    animation: pulse-glow 3s ease infinite;
-  }
-  .login-card h1 {
-    font-family: 'Syne', sans-serif;
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    margin-bottom: 8px;
-  }
-  .login-card p {
-    color: var(--text-muted);
-    font-size: 13px;
-    line-height: 1.6;
-    margin-bottom: 36px;
-  }
-  .btn-google {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    width: 100%;
-    padding: 14px 24px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-google:hover {
-    background: var(--border);
-    border-color: var(--accent);
-    transform: translateY(-1px);
-  }
-  .btn-google svg { flex-shrink: 0; }
-  .login-footer {
-    margin-top: 24px;
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-
-  /* ─── TOP NAV ─── */
-  .topnav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+  /* ── NAV ── */
+  nav {
     position: sticky; top: 0; z-index: 100;
+    background: rgba(240,249,255,0.88);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
   }
-  .topnav-logo {
-    display: flex; align-items: center; gap: 10px;
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 18px;
-  }
-  .topnav-logo .dot {
-    width: 8px; height: 8px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: pulse-glow 2s ease infinite;
-  }
-  .nav-right { display: flex; align-items: center; gap: 8px; }
-  .nav-btn {
-    padding: 8px 14px;
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .nav-btn:hover, .nav-btn.active {
-    background: var(--surface2);
-    color: var(--text);
-    border-color: var(--accent);
-  }
-  .nav-btn.primary {
-    background: var(--accent);
-    color: #000;
-    border-color: var(--accent);
-    font-weight: 500;
-  }
-  .nav-btn.primary:hover { background: #00c88c; }
-  .avatar {
-    width: 32px; height: 32px;
-    background: linear-gradient(135deg, var(--accent), #00b87a);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    color: #000;
-    cursor: pointer;
-  }
-
-  /* ─── MAIN CONTENT ─── */
-  .main { flex: 1; padding: 24px; max-width: 900px; margin: 0 auto; width: 100%; }
-
-  /* ─── SECTION HEADERS ─── */
-  .section-header {
+  .nav-inner {
     display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; max-width: 1080px; margin: 0 auto;
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px;
+    color: var(--text); text-decoration: none;
+  }
+  .nav-logo-mark {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff;
+    box-shadow: 0 4px 12px rgba(14,165,233,0.35);
+    animation: pulse-ring 2.5s ease infinite;
+  }
+  .nav-links { display: flex; align-items: center; gap: 8px; }
+  .nav-link {
+    padding: 8px 16px; border-radius: 8px;
+    font-size: 14px; font-weight: 500; color: var(--text-muted);
+    text-decoration: none; transition: all 0.2s;
+  }
+  .nav-link:hover { background: var(--surface2); color: var(--accent); }
+  .nav-cta {
+    padding: 10px 22px;
+    background: var(--accent); color: #fff;
+    border-radius: 10px; font-size: 14px; font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    text-decoration: none; transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(14,165,233,0.35);
+  }
+  .nav-cta:hover { background: var(--accent-dark); transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 100px 0 80px;
+    text-align: center;
+    position: relative; z-index: 1;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px; font-weight: 500; color: var(--accent);
+    margin-bottom: 28px;
+    box-shadow: var(--shadow);
+  }
+  .hero-badge-dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse-ring 2s ease infinite;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -2px;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+  .hero h1 span {
+    color: var(--accent);
+    position: relative;
+    display: inline-block;
+  }
+  .hero h1 span::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+    border-radius: 2px;
+  }
+  .hero-sub {
+    font-size: 20px; font-weight: 400; color: var(--text-muted);
+    max-width: 560px; margin: 0 auto 40px;
+    line-height: 1.6;
+  }
+  .hero-actions {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 16px 32px;
+    background: var(--accent); color: #fff;
+    border-radius: 12px; font-size: 16px; font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    text-decoration: none; transition: all 0.2s;
+    box-shadow: 0 8px 24px rgba(14,165,233,0.4);
+  }
+  .btn-primary:hover { background: var(--accent-dark); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(14,165,233,0.5); }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 16px 32px;
+    background: var(--surface); color: var(--text);
+    border: 1.5px solid var(--border);
+    border-radius: 12px; font-size: 16px; font-weight: 600;
+    font-family: 'Syne', sans-serif;
+    text-decoration: none; transition: all 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+  .hero-note {
+    margin-top: 16px;
+    font-size: 13px; color: var(--text-dim);
+  }
+
+  /* ── APP PREVIEW ── */
+  .preview-wrap {
+    position: relative; z-index: 1;
+    padding: 0 24px 80px;
+    display: flex; justify-content: center;
+  }
+  .preview-outer {
+    max-width: 820px; width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: float 5s ease-in-out infinite;
+  }
+  .preview-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .preview-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .preview-url {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 12px;
+    font-size: 12px; color: var(--text-muted); font-family: 'DM Sans', sans-serif;
+    margin: 0 12px;
+  }
+  .preview-content { padding: 24px; }
+  .preview-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border-radius: 10px; padding: 10px 16px;
     margin-bottom: 20px;
+  }
+  .preview-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px; color: var(--accent); display: flex; align-items: center; gap: 6px; }
+  .preview-logo-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+  .preview-nav-btns { display: flex; gap: 6px; }
+  .preview-nav-btn { padding: 4px 10px; border-radius: 6px; font-size: 10px; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); font-family: 'Syne', sans-serif; font-weight: 600; }
+  .preview-nav-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .preview-fy { display: inline-block; padding: 3px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; font-size: 10px; color: var(--accent); margin-bottom: 14px; font-family: 'Syne', sans-serif; }
+  .preview-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+  .preview-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .preview-card-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .preview-card-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
+  .preview-card-val.blue { color: var(--accent); }
+  .preview-card-val.orange { color: var(--accent2); }
+  .preview-card-val.red { color: var(--danger); }
+  .preview-qgrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .preview-q { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .preview-q-label { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .preview-q-months { font-size: 10px; color: var(--text-muted); margin-bottom: 10px; }
+  .preview-q-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+  .preview-q-row span:last-child { color: var(--text); font-weight: 500; }
+  .preview-q-total { display: flex; justify-content: space-between; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 700; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 6px; color: var(--danger); }
+
+  /* ── LOGOS / SOCIAL PROOF ── */
+  .proof {
+    padding: 40px 0;
+    text-align: center;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: relative; z-index: 1;
+  }
+  .proof-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; font-weight: 500; }
+  .proof-logos { display: flex; align-items: center; justify-content: center; gap: 40px; flex-wrap: wrap; }
+  .proof-logo {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px;
+    color: var(--text-muted); opacity: 0.6;
+  }
+  .proof-logo-mark { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; }
+
+  /* ── FEATURES ── */
+  .features { padding: 100px 0; position: relative; z-index: 1; }
+  .section-eyebrow {
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 2px;
+    margin-bottom: 12px;
   }
   .section-title {
     font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 800; letter-spacing: -1px;
+    line-height: 1.15; margin-bottom: 16px;
   }
-  .section-subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
+  .section-sub { font-size: 17px; color: var(--text-muted); max-width: 520px; line-height: 1.65; }
 
-  /* ─── DASHBOARD ─── */
-  .fy-label {
-    display: inline-block;
-    padding: 4px 12px;
-    background: rgba(0,229,160,0.1);
-    border: 1px solid rgba(0,229,160,0.2);
-    border-radius: 20px;
-    font-size: 11px;
-    color: var(--accent);
-    margin-bottom: 24px;
-  }
-  .summary-strip {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 28px;
-  }
-  .summary-card {
+  .features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 60px; }
+  .feature-card {
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     border-radius: var(--radius);
-    padding: 20px;
-    transition: border-color 0.2s;
+    padding: 28px 24px;
+    transition: all 0.25s;
+    box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
   }
-  .summary-card:hover { border-color: var(--accent); }
-  .summary-card .label {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-  }
-  .summary-card .value {
-    font-family: 'Syne', sans-serif;
-    font-size: 24px;
-    font-weight: 800;
-  }
-  .summary-card .value.green { color: var(--accent); }
-  .summary-card .value.orange { color: var(--accent2); }
-  .summary-card .value.red { color: var(--danger); }
-  .summary-card .sub {
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-top: 4px;
-  }
-
-  .quarters-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-  .quarter-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
-  .quarter-card::before {
+  .feature-card::before {
     content: '';
-    position: absolute; top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent), transparent);
-    opacity: 0;
-    transition: opacity 0.2s;
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+    opacity: 0; transition: opacity 0.25s;
   }
-  .quarter-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-  .quarter-card:hover::before { opacity: 1; }
-  .quarter-card.active-q { border-color: var(--accent); }
-  .quarter-card.active-q::before { opacity: 1; }
-  .q-label {
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
-    margin-bottom: 4px;
-  }
-  .q-months {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-bottom: 16px;
-  }
-  .q-row {
-    display: flex; justify-content: space-between;
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-  }
-  .q-row span:last-child { color: var(--text); }
-  .q-total {
-    display: flex; justify-content: space-between;
-    font-size: 13px;
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-    margin-top: 10px;
-  }
-  .q-total.payable { color: var(--danger); }
-  .q-total.refund  { color: var(--accent); }
-
-  /* ─── ENTRY SCREEN ─── */
-  .steps-bar {
-    display: flex; gap: 8px;
-    margin-bottom: 28px;
-  }
-  .step-pill {
-    flex: 1;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    transition: background 0.3s;
-  }
-  .step-pill.done { background: var(--accent); }
-  .step-pill.active { background: rgba(0,229,160,0.5); }
-
-  .entry-step { display: none; }
-  .entry-step.active { display: block; }
-
-  .entry-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 12px;
-  }
-  .choice-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
-    margin-bottom: 24px;
-  }
-  .choice-btn {
-    padding: 16px 12px;
-    background: var(--surface);
+  .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-icon {
+    width: 48px; height: 48px;
+    background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 16px;
   }
-  .choice-btn:hover { border-color: var(--accent); background: var(--surface2); }
-  .choice-btn.selected { border-color: var(--accent); background: rgba(0,229,160,0.08); color: var(--accent); }
-  .choice-btn.uber.selected   { border-color: var(--uber);  background: rgba(0,229,160,0.08); color: var(--uber); }
-  .choice-btn.didi.selected   { border-color: var(--didi);  background: rgba(255,107,53,0.08); color: var(--didi); }
-  .choice-btn.other.selected  { border-color: var(--other); background: rgba(77,159,255,0.08); color: var(--other); }
-  .choice-btn.income.selected { border-color: var(--accent); background: rgba(0,229,160,0.08); color: var(--accent); }
-  .choice-btn.expense.selected{ border-color: var(--accent2); background: rgba(255,107,53,0.08); color: var(--accent2); }
+  .feature-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .feature-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
 
-  .select-wrap {
-    position: relative;
-    margin-bottom: 16px;
+  /* ── HOW IT WORKS ── */
+  .how { padding: 100px 0; position: relative; z-index: 1; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; margin-top: 60px; position: relative; }
+  .steps::before {
+    content: '';
+    position: absolute; top: 28px; left: 10%; right: 10%; height: 2px;
+    background: linear-gradient(90deg, var(--border), var(--accent), var(--border));
+    z-index: 0;
   }
-  .select-wrap select {
-    width: 100%;
-    padding: 14px 40px 14px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    appearance: none;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-  .select-wrap select:focus { outline: none; border-color: var(--accent); }
-  .select-wrap::after {
-    content: '▾';
-    position: absolute;
-    right: 14px; top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-    pointer-events: none;
-    font-size: 14px;
-  }
-  .select-wrap select option { background: var(--surface2); }
-
-  .input-field {
-    width: 100%;
-    padding: 14px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 16px;
-    transition: border-color 0.2s;
-    margin-bottom: 16px;
-  }
-  .input-field:focus { outline: none; border-color: var(--accent); }
-  .input-field::placeholder { color: var(--text-dim); }
-
-  .amount-wrap {
-    position: relative;
-  }
-  .amount-wrap .dollar {
-    position: absolute;
-    left: 16px; top: 50%; transform: translateY(-50%);
-    color: var(--text-muted);
-    font-size: 16px;
-  }
-  .amount-wrap .input-field { padding-left: 32px; }
-
-  .btn {
-    display: inline-flex;
-    align-items: center; justify-content: center;
-    gap: 8px;
-    padding: 14px 24px;
-    border-radius: var(--radius);
-    font-family: 'Syne', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-  }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { background: #00c88c; transform: translateY(-1px); }
-  .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-  .btn-secondary:hover { border-color: var(--accent); }
-  .btn-danger { background: var(--danger); color: #fff; }
-  .btn-full { width: 100%; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-  .btn-row { display: flex; gap: 10px; margin-top: 8px; }
-
-  /* ─── RECORDS TABLE ─── */
-  .records-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    margin-top: 28px;
-  }
-  .records-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .records-header h3 {
-    font-family: 'Syne', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-  }
-  .record-row {
-    display: grid;
-    grid-template-columns: 80px 1fr 1fr 90px 90px 40px;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    border-bottom: 1px solid rgba(37,42,56,0.5);
-    font-size: 12px;
-    transition: background 0.15s;
-  }
-  .record-row:hover { background: var(--surface2); }
-  .record-row:last-child { border-bottom: none; }
-  .record-badge {
-    display: inline-flex;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 10px;
-    font-weight: 500;
-    font-family: 'Syne', sans-serif;
-  }
-  .badge-income  { background: rgba(0,229,160,0.1); color: var(--accent); }
-  .badge-expense { background: rgba(255,107,53,0.1); color: var(--accent2); }
-  .badge-uber  { background: rgba(0,229,160,0.08); color: var(--uber);  border: 1px solid rgba(0,229,160,0.2); }
-  .badge-didi  { background: rgba(255,107,53,0.08); color: var(--didi); border: 1px solid rgba(255,107,53,0.2); }
-  .badge-other { background: rgba(77,159,255,0.08); color: var(--other); border: 1px solid rgba(77,159,255,0.2); }
-  .record-amount-pos { color: var(--accent); font-family: 'Syne', sans-serif; font-weight: 700; }
-  .record-amount-neg { color: var(--accent2); font-family: 'Syne', sans-serif; font-weight: 700; }
-  .record-del {
-    background: none; border: none; color: var(--text-dim);
-    cursor: pointer; font-size: 14px; padding: 4px;
-    transition: color 0.2s;
-  }
-  .record-del:hover { color: var(--danger); }
-  .empty-state {
-    padding: 40px 20px;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-  .filter-row {
-    display: flex; gap: 8px; flex-wrap: wrap;
-    margin-bottom: 20px;
-  }
-  .filter-chip {
-    padding: 6px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-size: 11px;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .filter-chip:hover, .filter-chip.active { 
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,229,160,0.06);
-  }
-
-  /* ─── PROFILE SCREEN ─── */
-  .profile-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 28px;
-    margin-bottom: 20px;
-  }
-  .profile-header {
-    display: flex; align-items: center; gap: 16px;
-    margin-bottom: 28px;
-    padding-bottom: 28px;
-    border-bottom: 1px solid var(--border);
-  }
-  .avatar-lg {
+  .step { text-align: center; position: relative; z-index: 1; }
+  .step-num {
     width: 56px; height: 56px;
-    background: linear-gradient(135deg, var(--accent), #00b87a);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Syne', sans-serif;
-    font-size: 22px; font-weight: 700; color: #000;
-  }
-  .profile-info h2 {
-    font-family: 'Syne', sans-serif;
-    font-size: 18px; font-weight: 800;
-  }
-  .profile-info p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-
-  .form-group { margin-bottom: 20px; }
-  .form-label {
-    display: block;
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-  }
-  .form-hint {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 6px;
-  }
-  .slider-wrap {
-    display: flex; align-items: center; gap: 16px;
-  }
-  .slider-wrap input[type=range] {
-    flex: 1;
-    appearance: none;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    outline: none;
-  }
-  .slider-wrap input[type=range]::-webkit-slider-thumb {
-    appearance: none;
-    width: 18px; height: 18px;
-    border-radius: 50%;
     background: var(--accent);
-    cursor: pointer;
-    transition: box-shadow 0.2s;
-  }
-  .slider-wrap input[type=range]::-webkit-slider-thumb:hover {
-    box-shadow: 0 0 12px rgba(0,229,160,0.5);
-  }
-  .slider-val {
-    font-family: 'Syne', sans-serif;
-    font-size: 16px; font-weight: 700;
-    color: var(--accent);
-    min-width: 48px; text-align: right;
-  }
-
-  /* ─── GST SUMMARY PANEL ─── */
-  .gst-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-  }
-  .gst-panel-header {
-    padding: 20px 24px;
-    background: rgba(0,229,160,0.04);
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .gst-panel-header h3 {
-    font-family: 'Syne', sans-serif;
-    font-size: 15px; font-weight: 800;
-  }
-  .gst-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 24px;
-    border-bottom: 1px solid rgba(37,42,56,0.5);
-    font-size: 13px;
-  }
-  .gst-row:last-child { border-bottom: none; }
-  .gst-row .key { color: var(--text-muted); }
-  .gst-row .val { font-family: 'Syne', sans-serif; font-weight: 700; }
-  .gst-row.total {
-    background: rgba(0,229,160,0.04);
-    border-top: 1px solid var(--border);
-    padding: 18px 24px;
-  }
-  .gst-row.total .key { color: var(--text); font-size: 14px; }
-  .gst-row.total .val { font-size: 18px; }
-  .gst-row.total.payable .val { color: var(--danger); }
-  .gst-row.total.refund .val { color: var(--accent); }
-
-  /* ─── TOAST ─── */
-  #toast {
-    position: fixed; bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 20px;
-    font-size: 13px;
-    z-index: 9000;
-    transition: transform 0.3s ease;
-    white-space: nowrap;
-    display: flex; align-items: center; gap: 8px;
-  }
-  #toast.show { transform: translateX(-50%) translateY(0); }
-  #toast.success { border-color: var(--accent); color: var(--accent); }
-  #toast.error   { border-color: var(--danger); color: var(--danger); }
-
-  /* ─── LOADING ─── */
-  #loading-overlay {
-    position: fixed; inset: 0;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 8000;
-    flex-direction: column; gap: 16px;
-  }
-  .spinner {
-    width: 32px; height: 32px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
+    border: 3px solid var(--surface);
     border-radius: 50%;
-    animation: spin 0.7s linear infinite;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: #fff;
+    margin: 0 auto 20px;
+    box-shadow: 0 4px 16px rgba(14,165,233,0.4);
   }
-  #loading-overlay p { font-size: 13px; color: var(--text-muted); }
+  .step-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .step-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
 
-  /* ─── MONTH TABS ─── */
-  .month-tabs {
-    display: flex; gap: 6px; flex-wrap: wrap;
-    margin-bottom: 20px;
+  /* ── PLATFORMS ── */
+  .platforms { padding: 100px 0; position: relative; z-index: 1; }
+  .platform-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 60px; }
+  .platform-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 32px 28px;
+    text-align: center; transition: all 0.25s;
+    box-shadow: var(--shadow);
   }
-  .month-tab {
-    padding: 8px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 12px;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.2s;
+  .platform-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .platform-card.uber:hover { border-color: var(--accent); }
+  .platform-card.didi:hover { border-color: var(--accent2); }
+  .platform-card.other:hover { border-color: var(--green); }
+  .platform-mark {
+    width: 64px; height: 64px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800;
+    margin: 0 auto 16px;
   }
-  .month-tab:hover, .month-tab.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,229,160,0.06);
-  }
+  .platform-name { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+  .platform-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; margin-bottom: 20px; }
+  .platform-cats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .cat-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
 
-  /* ─── RESPONSIVE ─── */
-  @media (max-width: 600px) {
-    .summary-strip { grid-template-columns: 1fr; }
-    .quarters-grid { grid-template-columns: 1fr; }
-    .record-row { grid-template-columns: 70px 1fr 80px 32px; }
-    .record-row .col-cat, .record-row .col-month { display: none; }
-    .main { padding: 16px; }
-    .login-card { padding: 36px 24px; }
-    .nav-btn:not(.primary):not(.avatar-nav) { display: none; }
-  }
-
-  /* ─── PER-QUARTER PCT ACCORDION ─── */
-  .q-pct-block {
-    border: 1px solid var(--border);
+  /* ── INCOME STATEMENT HIGHLIGHT ── */
+  .statement { padding: 100px 0; position: relative; z-index: 1; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .statement-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+  .statement-preview {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
     border-radius: var(--radius);
-    margin-bottom: 10px;
     overflow: hidden;
+    box-shadow: var(--shadow-lg);
   }
-  .q-pct-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 18px;
-    cursor: pointer;
-    background: var(--surface2);
-    transition: background 0.2s;
-    user-select: none;
+  .stmt-header { background: var(--surface2); padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .stmt-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; color: var(--text); }
+  .stmt-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .stmt-body { padding: 20px; }
+  .stmt-section { margin-bottom: 16px; }
+  .stmt-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); font-weight: 600; margin-bottom: 8px; }
+  .stmt-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+  .stmt-row span:last-child { color: var(--text); font-weight: 500; }
+  .stmt-total { display: flex; justify-content: space-between; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; padding: 12px 0 0; }
+  .stmt-total.income { color: var(--green); }
+  .stmt-total.expense { color: var(--danger); }
+  .stmt-total.net { color: var(--accent); border-top: 2px solid var(--border); padding-top: 12px; margin-top: 4px; }
+  .stmt-gst-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-top: 14px; }
+  .stmt-gst-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); padding: 3px 0; }
+  .stmt-gst-row span:last-child { color: var(--text); font-weight: 500; }
+
+  /* ── TESTIMONIALS ── */
+  .testimonials { padding: 100px 0; position: relative; z-index: 1; }
+  .testimonial-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 60px; }
+  .testimonial-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 28px 24px;
+    box-shadow: var(--shadow);
   }
-  .q-pct-header:hover { background: var(--border); }
-  .q-pct-header-left { display: flex; align-items: center; gap: 12px; }
-  .q-pct-label {
+  .testimonial-stars { color: #f59e0b; font-size: 14px; margin-bottom: 14px; letter-spacing: 2px; }
+  .testimonial-text { font-size: 15px; line-height: 1.7; color: var(--text); margin-bottom: 20px; font-style: italic; }
+  .testimonial-author { display: flex; align-items: center; gap: 12px; }
+  .testimonial-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #fff;
+  }
+  .testimonial-name { font-weight: 600; font-size: 14px; }
+  .testimonial-role { font-size: 12px; color: var(--text-muted); }
+
+  /* ── CTA ── */
+  .cta-section {
+    padding: 100px 0; position: relative; z-index: 1; text-align: center;
+  }
+  .cta-card {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    border-radius: var(--radius-lg); padding: 80px 60px;
+    position: relative; overflow: hidden;
+    box-shadow: 0 24px 80px rgba(14,165,233,0.35);
+  }
+  .cta-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .cta-card h2 {
+    font-family: 'Syne', sans-serif; font-size: clamp(28px, 4vw, 48px);
+    font-weight: 800; color: #fff; letter-spacing: -1px;
+    margin-bottom: 16px; position: relative;
+  }
+  .cta-card p { font-size: 18px; color: rgba(255,255,255,0.8); margin-bottom: 36px; position: relative; }
+  .btn-white {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 16px 36px;
+    background: #fff; color: var(--accent);
+    border-radius: 12px; font-size: 16px; font-weight: 700;
     font-family: 'Syne', sans-serif;
-    font-size: 13px; font-weight: 700;
-    color: var(--accent);
+    text-decoration: none; transition: all 0.2s;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    position: relative;
   }
-  .q-pct-months { font-size: 11px; color: var(--text-muted); }
-  .q-pct-summary {
-    display: flex; gap: 10px;
-  }
-  .q-pct-chip {
-    font-size: 10px;
-    padding: 3px 8px;
-    background: rgba(0,229,160,0.08);
-    border: 1px solid rgba(0,229,160,0.15);
-    border-radius: 20px;
-    color: var(--accent);
-  }
-  .q-pct-chevron {
-    color: var(--text-muted);
-    font-size: 12px;
-    transition: transform 0.25s;
-  }
-  .q-pct-block.open .q-pct-chevron { transform: rotate(180deg); }
-  .q-pct-body {
-    display: none;
-    padding: 18px 18px 10px;
-    border-top: 1px solid var(--border);
-  }
-  .q-pct-block.open .q-pct-body { display: block; }
+  .btn-white:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+  .cta-note { margin-top: 16px; font-size: 13px; color: rgba(255,255,255,0.6); position: relative; }
 
+  /* ── FOOTER ── */
+  footer {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 48px 0; position: relative; z-index: 1;
+  }
+  .footer-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 20px;
+  }
+  .footer-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+  .footer-link { font-size: 13px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .footer-link:hover { color: var(--accent); }
+  .footer-copy { font-size: 12px; color: var(--text-dim); width: 100%; padding-top: 20px; border-top: 1px solid var(--border); margin-top: 20px; }
 
-  /* ─── ADSENSE AD UNITS ─── */
-  .ad-unit {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 11px;
-  }
-  .ad-unit-banner {
-    width: 100%; min-height: 90px;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 20px;
-  }
-  .ad-unit-inline {
-    width: 100%; min-height: 280px;
-    display: flex; align-items: center; justify-content: center;
-    margin: 24px 0;
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .platform-cards { grid-template-columns: 1fr; }
+    .testimonial-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: repeat(2,1fr); }
+    .steps::before { display: none; }
+    .statement-inner { grid-template-columns: 1fr; }
+    .cta-card { padding: 48px 28px; }
+    .hero { padding: 60px 0 40px; }
+    .nav-links { display: none; }
+    .preview-cards { grid-template-columns: repeat(3,1fr); }
   }
 </style>
 </head>
 <body>
-<script>
-  // Guaranteed fallback — if Firebase init hasn't cleared the loader in 5s, force it off
-  window._loadFallback = setTimeout(() => {
-    const lo = document.getElementById('loading-overlay');
-    if (lo && lo.style.display !== 'none') {
-      lo.style.display = 'none';
-      const login = document.getElementById('screen-login');
-      if (login) { login.classList.add('active'); }
-    }
-  }, 5000);
-</script>
 
-<!-- ─── LOADING OVERLAY ─── -->
-<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:8000;flex-direction:column;gap:16px;">
-  <div class="spinner"></div>
-  <p style="font-size:13px;color:var(--text-muted);">Loading RideLog…</p>
-</div>
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-mark">RL</div>
+      RideLog
+    </a>
+    <div class="nav-links">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#how" class="nav-link">How it works</a>
+      <a href="#platforms" class="nav-link">Platforms</a>
+      <a href="#statement" class="nav-link">Income statement</a>
+    </div>
+    <a href="./index.html" class="nav-cta">Get started free →</a>
+  </div>
+</nav>
 
-<!-- ─── SETUP SCREEN (shown when Firebase config is missing) ─── -->
-<div id="screen-setup" class="screen" style="align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 60% at 50% 0%,#0a2a1a 0%,var(--bg) 70%);position:relative;">
-  <div class="login-grid-bg"></div>
-  <div class="login-card fade-up" style="max-width:520px;text-align:left;">
-    <div class="logo-mark" style="margin-bottom:20px;">RL</div>
-    <h1 style="font-size:22px;margin-bottom:8px;">Firebase Setup Required</h1>
-    <p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:24px;">
-      Paste your Firebase project credentials below to enable Google login and cloud data saving.
-      Get these from <strong>console.firebase.google.com → Project Settings → Your Apps</strong>.
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-badge fade-up">
+      <div class="hero-badge-dot"></div>
+      Built for Australian rideshare drivers
+    </div>
+    <h1 class="fade-up d1">
+      Know exactly what<br>you <span>earned</span> — every trip.
+    </h1>
+    <p class="hero-sub fade-up d2">
+      Log your Uber and DiDi income and expenses. Get a full income statement and GST summary — no accountant needed.
     </p>
+    <div class="hero-actions fade-up d3">
+      <a href="./index.html" class="btn-primary">Start tracking free →</a>
+      <a href="#how" class="btn-secondary">See how it works</a>
+    </div>
+    <p class="hero-note fade-up d4">Free to use · No credit card required · Google or email login</p>
+  </div>
+</section>
 
-    <div class="form-group">
-      <label class="form-label">API Key</label>
-      <input class="input-field" id="setup-apiKey" placeholder="AIzaSy..." />
+<!-- ── APP PREVIEW ── -->
+<div class="preview-wrap fade-up d3">
+  <div class="preview-outer">
+    <div class="preview-bar">
+      <div class="preview-dot" style="background:#ef4444;"></div>
+      <div class="preview-dot" style="background:#f59e0b;margin-left:6px;"></div>
+      <div class="preview-dot" style="background:#22c55e;margin-left:6px;"></div>
+      <div class="preview-url">app.ridelog.com.au/dashboard</div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Auth Domain</label>
-      <input class="input-field" id="setup-authDomain" placeholder="your-project.firebaseapp.com" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Project ID</label>
-      <input class="input-field" id="setup-projectId" placeholder="your-project-id" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Storage Bucket</label>
-      <input class="input-field" id="setup-storageBucket" placeholder="your-project.appspot.com" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Messaging Sender ID</label>
-      <input class="input-field" id="setup-messagingSenderId" placeholder="123456789" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">App ID</label>
-      <input class="input-field" id="setup-appId" placeholder="1:123456789:web:abc123" />
-    </div>
-
-    <button class="btn btn-primary btn-full" onclick="saveSetupConfig()" style="margin-top:4px;">Save & Connect →</button>
-
-    <div style="margin-top:20px;padding:14px;background:var(--surface2);border-radius:var(--radius);font-size:11px;color:var(--text-muted);line-height:1.8;">
-      <strong style="color:var(--text);">Also make sure you have:</strong><br>
-      ✓ Enabled <strong>Google Sign-In</strong> in Firebase → Authentication → Sign-in methods<br>
-      ✓ Created a <strong>Firestore database</strong> in Firebase → Firestore Database<br>
-      ✓ Added your site URL to <strong>Authorized Domains</strong> in Firebase → Authentication → Settings
+    <div class="preview-content">
+      <div class="preview-nav">
+        <div class="preview-logo"><div class="preview-logo-dot"></div> RideLog</div>
+        <div class="preview-nav-btns">
+          <div class="preview-nav-btn active">Dashboard</div>
+          <div class="preview-nav-btn">+ Add Entry</div>
+          <div class="preview-nav-btn">Records</div>
+          <div class="preview-nav-btn">Profile</div>
+        </div>
+      </div>
+      <div class="preview-fy">FY 2024–25</div>
+      <div class="preview-cards">
+        <div class="preview-card">
+          <div class="preview-card-label">Total Income</div>
+          <div class="preview-card-val blue">$18,420</div>
+        </div>
+        <div class="preview-card">
+          <div class="preview-card-label">Total Expenses</div>
+          <div class="preview-card-val orange">$4,860</div>
+        </div>
+        <div class="preview-card">
+          <div class="preview-card-label">Net BAS Position</div>
+          <div class="preview-card-val red">$1,233</div>
+        </div>
+      </div>
+      <div class="preview-qgrid">
+        <div class="preview-q">
+          <div class="preview-q-label">Q1</div>
+          <div class="preview-q-months">July · August · September</div>
+          <div class="preview-q-row"><span>Income</span><span>$4,820</span></div>
+          <div class="preview-q-row"><span>Expenses</span><span>$1,240</span></div>
+          <div class="preview-q-row"><span>GST Collected</span><span>$438</span></div>
+          <div class="preview-q-total"><span>GST Payable</span><span>$325</span></div>
+        </div>
+        <div class="preview-q">
+          <div class="preview-q-label">Q2</div>
+          <div class="preview-q-months">October · November · December</div>
+          <div class="preview-q-row"><span>Income</span><span>$5,310</span></div>
+          <div class="preview-q-row"><span>Expenses</span><span>$1,180</span></div>
+          <div class="preview-q-row"><span>GST Collected</span><span>$483</span></div>
+          <div class="preview-q-total"><span>GST Payable</span><span>$376</span></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ─── GOOGLE ADSENSE ───────────────────────────────────────────────
-  Add your AdSense script here AFTER you get approved.
-  Replace YOUR_ADSENSE_PUBLISHER_ID with your real pub-XXXXXXXXXXXXXXXX.
-  Leave this commented out until then — the placeholder URL causes errors.
-
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_PUBLISHER_ID" crossorigin="anonymous"></script>
-──────────────────────────────────────────────────────────────────────-->
-
-<!-- ─── TOAST ─── -->
-<div id="toast"></div>
-
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: LOGIN                                  -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-login" class="screen active">
-  <div class="login-grid-bg"></div>
-  <div class="login-card fade-up">
-    <div class="logo-mark">RL</div>
-    <h1>RideLog</h1>
-    <p>GST & Tax Assistant for Australian<br>rideshare & delivery drivers</p>
-    <button class="btn-google" id="google-btn" onclick="handleSignIn()">
-      <svg width="20" height="20" viewBox="0 0 48 48">
-        <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
-        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 19 12 24 12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
-        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.4 35.5 26.8 36 24 36c-5.2 0-9.7-3.4-11.3-8l-6.6 5.1C9.5 39.5 16.3 44 24 44z"/>
-        <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.3 4.1-4.2 5.5l6.2 5.2C37 38.3 44 33 44 24c0-1.3-.1-2.6-.4-3.9z"/>
-      </svg>
-      <span id="google-btn-text">Continue with Google</span>
-    </button>
-    <div class="login-footer">
-      By continuing you agree to our Terms of Service.<br>
-      Your data is stored securely in Firebase.
+<!-- ── PROOF ── -->
+<div class="proof">
+  <div class="wrap">
+    <div class="proof-label">Supports all major Australian rideshare platforms</div>
+    <div class="proof-logos">
+      <div class="proof-logo">
+        <div class="proof-logo-mark" style="background:#000;">U</div>
+        Uber
+      </div>
+      <div class="proof-logo">
+        <div class="proof-logo-mark" style="background:#f97316;">D</div>
+        DiDi
+      </div>
+      <div class="proof-logo">
+        <div class="proof-logo-mark" style="background:#0ea5e9;">+</div>
+        Other ABN Work
+      </div>
+      <div class="proof-logo" style="font-size:14px;">
+        🇦🇺 ATO Compliant
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: DASHBOARD                              -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-dashboard" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn active" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn" onclick="showScreen('entry')">+ Add Entry</button>
-      <button class="nav-btn" onclick="showScreen('records')">Records</button>
-      <button class="nav-btn" onclick="showScreen('profile')">Profile</button>
-      <div class="avatar" id="nav-avatar" onclick="showScreen('profile')">?</div>
-    </div>
-  </nav>
-  <div class="main">
-    <div class="fade-up">
-      <div class="section-header">
-        <div>
-          <div class="section-title">Dashboard</div>
-          <div class="section-subtitle" id="dash-greeting">Good morning</div>
-        </div>
+<!-- ── FEATURES ── -->
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="section-eyebrow fade-up">Everything you need</div>
+    <h2 class="section-title fade-up d1">Built around how<br>rideshare actually works</h2>
+    <p class="section-sub fade-up d2">No generic bookkeeping software. Every category, every platform, every fee — exactly as it appears on your Uber and DiDi statements.</p>
+
+    <div class="features-grid">
+      <div class="feature-card fade-up d1">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Income & expense tracking</div>
+        <div class="feature-desc">Log every fare, incentive, toll, and expense against the right category. Uber and DiDi income types are pre-loaded — no guessing.</div>
       </div>
-
-      <!-- ── AD UNIT — uncomment and replace IDs after AdSense approval ──
-      <div class="ad-unit ad-unit-banner">
-        <ins class="adsbygoogle"
-          style="display:block;width:100%;height:90px;"
-          data-ad-client="ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
-          data-ad-slot="YOUR_AD_SLOT_ID"
-          data-ad-format="horizontal"
-          data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      <div class="feature-card fade-up d2">
+        <div class="feature-icon">🧾</div>
+        <div class="feature-title">Full income statement</div>
+        <div class="feature-desc">See your total income, deductible expenses, and net position in one clean view. Ready to hand to your accountant at tax time.</div>
       </div>
-      ──────────────────────────────────────────────────────────────────── -->
-
-      <div class="fy-label" id="fy-label">FY 2024–25</div>
-
-      <div class="summary-strip">
-        <div class="summary-card fade-up delay-1">
-          <div class="label">Total Income</div>
-          <div class="value green" id="dash-income">$0.00</div>
-          <div class="sub">incl. GST</div>
-        </div>
-        <div class="summary-card fade-up delay-2">
-          <div class="label">Total Expenses</div>
-          <div class="value orange" id="dash-expenses">$0.00</div>
-          <div class="sub">incl. GST</div>
-        </div>
-        <div class="summary-card fade-up delay-3">
-          <div class="label">Net BAS Position</div>
-          <div class="value" id="dash-bas">$0.00</div>
-          <div class="sub" id="dash-bas-label">GST payable to ATO</div>
-        </div>
+      <div class="feature-card fade-up d3">
+        <div class="feature-icon">📋</div>
+        <div class="feature-title">GST & BAS summary</div>
+        <div class="feature-desc">GST collected and claimable calculated automatically per quarter. Know your BAS position before lodgement day arrives.</div>
       </div>
-
-      <div class="section-header fade-up delay-2">
-        <div>
-          <div class="section-title" style="font-size:16px;">Quarters</div>
-          <div class="section-subtitle">Click a quarter to add entries or view details</div>
-        </div>
+      <div class="feature-card fade-up d1">
+        <div class="feature-icon">📅</div>
+        <div class="feature-title">Australian financial year quarters</div>
+        <div class="feature-desc">Organised by Q1–Q4 in the Australian FY (Jul–Jun). Set different business use percentages for vehicle, phone, and internet per quarter.</div>
       </div>
-
-      <!-- ── AD UNIT — uncomment and replace IDs after AdSense approval ──
-      <div class="ad-unit ad-unit-inline">
-        <ins class="adsbygoogle"
-          style="display:block;width:100%;height:280px;"
-          data-ad-client="ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
-          data-ad-slot="YOUR_AD_SLOT_ID_2"
-          data-ad-format="rectangle"
-          data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      <div class="feature-card fade-up d2">
+        <div class="feature-icon">☁️</div>
+        <div class="feature-title">Synced across devices</div>
+        <div class="feature-desc">Log from your phone after a shift. Check your numbers on desktop. Everything saves to the cloud in real time via Google Firebase.</div>
       </div>
-      ──────────────────────────────────────────────────────────────────── -->
-
-      <div class="quarters-grid" id="quarters-grid"></div>
+      <div class="feature-card fade-up d3">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Private & secure</div>
+        <div class="feature-desc">Your data is locked to your account. Firestore security rules ensure nobody else can ever read or write your records.</div>
+      </div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: ENTRY                                  -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-entry" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn active">+ Add Entry</button>
-      <button class="nav-btn" onclick="showScreen('records')">Records</button>
-      <button class="nav-btn" onclick="showScreen('profile')">Profile</button>
-      <div class="avatar" id="nav-avatar-entry" onclick="showScreen('profile')">?</div>
+<!-- ── HOW IT WORKS ── -->
+<section class="how" id="how">
+  <div class="wrap">
+    <div style="text-align:center;">
+      <div class="section-eyebrow fade-up">Simple by design</div>
+      <h2 class="section-title fade-up d1">Four steps, done in seconds</h2>
     </div>
-  </nav>
-  <div class="main">
-    <div class="section-header fade-up">
+    <div class="steps">
+      <div class="step fade-up d1">
+        <div class="step-num">1</div>
+        <div class="step-title">Pick your quarter</div>
+        <div class="step-desc">Select Q1–Q4 of the Australian financial year and the month you're logging for.</div>
+      </div>
+      <div class="step fade-up d2">
+        <div class="step-num">2</div>
+        <div class="step-title">Income or expense?</div>
+        <div class="step-desc">Choose whether you're logging something you earned or something you spent.</div>
+      </div>
+      <div class="step fade-up d3">
+        <div class="step-num">3</div>
+        <div class="step-title">Select the category</div>
+        <div class="step-desc">Pick from platform-specific categories pre-loaded from Uber and DiDi statements.</div>
+      </div>
+      <div class="step fade-up d4">
+        <div class="step-num">4</div>
+        <div class="step-title">Enter the amount</div>
+        <div class="step-desc">Type in the figure. GST is calculated automatically. Hit save — you're done.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PLATFORMS ── -->
+<section class="platforms" id="platforms">
+  <div class="wrap">
+    <div class="section-eyebrow fade-up">Platform support</div>
+    <h2 class="section-title fade-up d1">Every Uber and DiDi<br>category, pre-loaded</h2>
+    <p class="section-sub fade-up d2">We've mapped every income and expense type directly from Uber and DiDi driver statements so you never have to figure out where something goes.</p>
+    <div class="platform-cards">
+      <div class="platform-card uber fade-up d1">
+        <div class="platform-mark" style="background:#000;color:#fff;">U</div>
+        <div class="platform-name">Uber</div>
+        <div class="platform-desc">Full support for transportation and delivery income, plus all Uber-specific fees and deductions.</div>
+        <div class="platform-cats">
+          <span class="cat-pill" style="background:#e0f2fe;color:#0c4a6e;">Gross Fares</span>
+          <span class="cat-pill" style="background:#e0f2fe;color:#0c4a6e;">Booking Fees</span>
+          <span class="cat-pill" style="background:#e0f2fe;color:#0c4a6e;">Toll Reimbursement</span>
+          <span class="cat-pill" style="background:#e0f2fe;color:#0c4a6e;">Delivery Fee</span>
+          <span class="cat-pill" style="background:#e0f2fe;color:#0c4a6e;">Tips</span>
+          <span class="cat-pill" style="background:#e0f2fe;color:#0c4a6e;">Service Fees</span>
+        </div>
+      </div>
+      <div class="platform-card didi fade-up d2">
+        <div class="platform-mark" style="background:#f97316;color:#fff;">D</div>
+        <div class="platform-name">DiDi</div>
+        <div class="platform-desc">Complete DiDi fare breakdown categories including CTP fee, gov levy, and all deductions.</div>
+        <div class="platform-cats">
+          <span class="cat-pill" style="background:#fff4ec;color:#9a3412;">Rider Fares</span>
+          <span class="cat-pill" style="background:#fff4ec;color:#9a3412;">Gov Levy</span>
+          <span class="cat-pill" style="background:#fff4ec;color:#9a3412;">CTP Fee</span>
+          <span class="cat-pill" style="background:#fff4ec;color:#9a3412;">Airport Fee</span>
+          <span class="cat-pill" style="background:#fff4ec;color:#9a3412;">Rewards</span>
+          <span class="cat-pill" style="background:#fff4ec;color:#9a3412;">Service Fee</span>
+        </div>
+      </div>
+      <div class="platform-card other fade-up d3">
+        <div class="platform-mark" style="background:#16a34a;color:#fff;">+</div>
+        <div class="platform-name">Other ABN Work</div>
+        <div class="platform-desc">Log any other gig or ABN income alongside your platform earnings. Common expenses shared across all.</div>
+        <div class="platform-cats">
+          <span class="cat-pill" style="background:#f0fdf4;color:#14532d;">Fuel / EV</span>
+          <span class="cat-pill" style="background:#f0fdf4;color:#14532d;">Registration</span>
+          <span class="cat-pill" style="background:#f0fdf4;color:#14532d;">Insurance</span>
+          <span class="cat-pill" style="background:#f0fdf4;color:#14532d;">Car Wash</span>
+          <span class="cat-pill" style="background:#f0fdf4;color:#14532d;">Repairs</span>
+          <span class="cat-pill" style="background:#f0fdf4;color:#14532d;">Dashcams</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── INCOME STATEMENT ── -->
+<section class="statement" id="statement">
+  <div class="wrap">
+    <div class="statement-inner">
       <div>
-        <div class="section-title">New Entry</div>
-        <div class="section-subtitle">Log income or an expense</div>
+        <div class="section-eyebrow fade-up">Income statement</div>
+        <h2 class="section-title fade-up d1">Your full financial picture — one screen</h2>
+        <p class="section-sub fade-up d2" style="margin-bottom:28px;">RideLog calculates your total income, deductible expenses, and net position for any period. Plus a full GST breakdown so your BAS lodgement is straightforward.</p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:12px;" class="fade-up d3">
+          <li style="display:flex;align-items:flex-start;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-size:18px;line-height:1;">✓</span>
+            Total income broken down by platform and category
+          </li>
+          <li style="display:flex;align-items:flex-start;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-size:18px;line-height:1;">✓</span>
+            Deductible expenses with business use % applied
+          </li>
+          <li style="display:flex;align-items:flex-start;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-size:18px;line-height:1;">✓</span>
+            GST collected vs GST claimable — net BAS position
+          </li>
+          <li style="display:flex;align-items:flex-start;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-size:18px;line-height:1;">✓</span>
+            Per-quarter breakdown across the full financial year
+          </li>
+        </ul>
       </div>
-      <button class="btn btn-secondary" onclick="showScreen('dashboard')" style="font-size:12px;padding:8px 14px;">← Back</button>
-    </div>
-
-    <div class="steps-bar" id="steps-bar">
-      <div class="step-pill active" id="spill-1"></div>
-      <div class="step-pill" id="spill-2"></div>
-      <div class="step-pill" id="spill-3"></div>
-      <div class="step-pill" id="spill-4"></div>
-    </div>
-
-    <!-- Step 1: Quarter & Month -->
-    <div class="entry-step active fade-up" id="step-1">
-      <div class="entry-label">Step 1 of 4 — Select Period</div>
-      <div class="entry-label" style="margin-top:16px;">Quarter</div>
-      <div class="choice-grid" id="quarter-choices"></div>
-      <div class="entry-label" id="month-label" style="display:none;">Month</div>
-      <div class="month-tabs" id="month-tabs"></div>
-      <button class="btn btn-primary" id="step1-next" onclick="goStep(2)" disabled>Next →</button>
-    </div>
-
-    <!-- Step 2: Income or Expense -->
-    <div class="entry-step" id="step-2">
-      <div class="entry-label">Step 2 of 4 — Entry Type</div>
-      <div class="choice-grid">
-        <div class="choice-btn income" onclick="selectType('income',this)">📈 Income</div>
-        <div class="choice-btn expense" onclick="selectType('expense',this)">📉 Expense</div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
-        <button class="btn btn-primary" id="step2-next" onclick="goStep(3)" disabled>Next →</button>
-      </div>
-    </div>
-
-    <!-- Step 3: Platform + Category -->
-    <div class="entry-step" id="step-3">
-      <div class="entry-label">Step 3 of 4 — Platform & Category</div>
-      <div class="entry-label" style="margin-top:16px;">Platform</div>
-      <div class="choice-grid">
-        <div class="choice-btn uber" onclick="selectPlatform('uber',this)">🟢 Uber</div>
-        <div class="choice-btn didi" onclick="selectPlatform('didi',this)">🟠 DiDi</div>
-        <div class="choice-btn other" onclick="selectPlatform('other',this)">🔵 Other</div>
-      </div>
-      <div class="entry-label">Category</div>
-      <div class="select-wrap">
-        <select id="category-select">
-          <option value="">Select platform first…</option>
-        </select>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
-        <button class="btn btn-primary" id="step3-next" onclick="goStep(4)" disabled>Next →</button>
-      </div>
-    </div>
-
-    <!-- Step 4: Amount & Save -->
-    <div class="entry-step" id="step-4">
-      <div class="entry-label">Step 4 of 4 — Amount & Notes</div>
-      <div class="form-group">
-        <label class="form-label">Amount (AUD, incl. GST)</label>
-        <div class="amount-wrap">
-          <span class="dollar">$</span>
-          <input class="input-field" id="amount-input" type="number" step="0.01" min="0" placeholder="0.00" oninput="validateAmount()" />
+      <div class="statement-preview fade-up d2">
+        <div class="stmt-header">
+          <div class="stmt-title">Income Statement — FY 2024–25</div>
+          <div class="stmt-sub">All platforms · Q1–Q4</div>
+        </div>
+        <div class="stmt-body">
+          <div class="stmt-section">
+            <div class="stmt-section-label">Income</div>
+            <div class="stmt-row"><span>Uber — Gross Fares</span><span>$12,480</span></div>
+            <div class="stmt-row"><span>Uber — Tips</span><span>$340</span></div>
+            <div class="stmt-row"><span>DiDi — Rider Fares</span><span>$5,320</span></div>
+            <div class="stmt-row"><span>DiDi — Rewards</span><span>$280</span></div>
+            <div class="stmt-total income"><span>Total Income</span><span>$18,420</span></div>
+          </div>
+          <div class="stmt-section">
+            <div class="stmt-section-label">Expenses</div>
+            <div class="stmt-row"><span>Uber — Service Fees</span><span>$2,140</span></div>
+            <div class="stmt-row"><span>Vehicle — Fuel</span><span>$1,820</span></div>
+            <div class="stmt-row"><span>Vehicle — Insurance</span><span>$640</span></div>
+            <div class="stmt-row"><span>Admin — Mobile Phone</span><span>$260</span></div>
+            <div class="stmt-total expense"><span>Total Expenses</span><span>$4,860</span></div>
+          </div>
+          <div class="stmt-total net"><span>Net Position</span><span>$13,560</span></div>
+          <div class="stmt-gst-box">
+            <div class="stmt-gst-row"><span>GST Collected</span><span>$1,674</span></div>
+            <div class="stmt-gst-row"><span>GST Claimable</span><span>$441</span></div>
+            <div class="stmt-gst-row" style="font-weight:600;color:var(--danger);padding-top:6px;border-top:1px solid var(--border);margin-top:4px;"><span>Net BAS Payable</span><span>$1,233</span></div>
+          </div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Notes (optional)</label>
-        <input class="input-field" id="notes-input" placeholder="e.g. Airport run, peak hour…" />
-      </div>
-      <div class="gst-panel" id="preview-panel" style="margin-bottom:20px; display:none;">
-        <div class="gst-panel-header"><h3>GST Preview</h3></div>
-        <div class="gst-row"><span class="key">Amount entered</span><span class="val" id="prev-amount">$0.00</span></div>
-        <div class="gst-row"><span class="key">GST component (÷11)</span><span class="val" id="prev-gst">$0.00</span></div>
-        <div class="gst-row"><span class="key">Ex-GST amount</span><span class="val" id="prev-ex">$0.00</span></div>
-        <div class="gst-row" id="prev-biz-row" style="display:none;"><span class="key">Business use %</span><span class="val" id="prev-biz">100%</span></div>
-        <div class="gst-row" id="prev-claim-row" style="display:none;"><span class="key">GST claimable</span><span class="val" id="prev-claim">$0.00</span></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(3)">← Back</button>
-        <button class="btn btn-primary" id="save-btn" onclick="saveEntry()" disabled>💾 Save to Profile</button>
-      </div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: RECORDS                               -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-records" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn" onclick="showScreen('entry')">+ Add Entry</button>
-      <button class="nav-btn active">Records</button>
-      <button class="nav-btn" onclick="showScreen('profile')">Profile</button>
-      <div class="avatar" id="nav-avatar-records" onclick="showScreen('profile')">?</div>
+<!-- ── TESTIMONIALS ── -->
+<section class="testimonials">
+  <div class="wrap">
+    <div style="text-align:center;">
+      <div class="section-eyebrow fade-up">Drivers love it</div>
+      <h2 class="section-title fade-up d1">What rideshare drivers are saying</h2>
     </div>
-  </nav>
-  <div class="main">
-    <div class="section-header fade-up">
-      <div>
-        <div class="section-title">All Records</div>
-        <div class="section-subtitle" id="records-count">0 entries</div>
-      </div>
-    </div>
-
-    <div class="filter-row fade-up delay-1" id="filter-row">
-      <div class="filter-chip active" onclick="filterRecords('all',this)">All</div>
-      <div class="filter-chip" onclick="filterRecords('income',this)">Income</div>
-      <div class="filter-chip" onclick="filterRecords('expense',this)">Expenses</div>
-      <div class="filter-chip" onclick="filterRecords('uber',this)">Uber</div>
-      <div class="filter-chip" onclick="filterRecords('didi',this)">DiDi</div>
-      <div class="filter-chip" onclick="filterRecords('other',this)">Other</div>
-    </div>
-
-    <div class="records-section fade-up delay-2">
-      <div class="records-header">
-        <h3>Entries</h3>
-        <span style="font-size:11px;color:var(--text-muted);">sorted by most recent</span>
-      </div>
-      <div style="padding:0 20px 6px; display:grid; grid-template-columns:80px 1fr 1fr 90px 90px 40px; gap:12px; font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">
-        <span>TYPE</span><span>PLATFORM / CAT</span><span class="col-month">PERIOD</span><span>AMOUNT</span><span>GST</span><span></span>
-      </div>
-      <div id="records-list"></div>
-    </div>
-
-    <div class="gst-panel fade-up delay-3" style="margin-top:28px;" id="records-gst-summary">
-      <div class="gst-panel-header"><h3>GST Summary (Filtered)</h3></div>
-      <div class="gst-row"><span class="key">GST on Income (collected)</span><span class="val green" id="rec-gst-income">$0.00</span></div>
-      <div class="gst-row"><span class="key">GST on Expenses (claimable)</span><span class="val orange" id="rec-gst-exp">$0.00</span></div>
-      <div class="gst-row total" id="rec-bas-row">
-        <span class="key">Net BAS Position</span>
-        <span class="val" id="rec-gst-net">$0.00</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: PROFILE                               -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-profile" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn" onclick="showScreen('entry')">+ Add Entry</button>
-      <button class="nav-btn" onclick="showScreen('records')">Records</button>
-      <button class="nav-btn active">Profile</button>
-      <div class="avatar" id="nav-avatar-profile" onclick="showScreen('profile')">?</div>
-    </div>
-  </nav>
-  <div class="main">
-    <div class="section-header fade-up">
-      <div class="section-title">Profile & Settings</div>
-    </div>
-
-    <div class="profile-card fade-up delay-1">
-      <div class="profile-header">
-        <div class="avatar-lg" id="profile-avatar-lg">?</div>
-        <div class="profile-info">
-          <h2 id="profile-name">Loading…</h2>
-          <p id="profile-email">–</p>
+    <div class="testimonial-grid">
+      <div class="testimonial-card fade-up d1">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">"Finally something built for drivers. I used to spend hours on spreadsheets trying to figure out my GST. Now I log as I go and it's all there."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);">MK</div>
+          <div>
+            <div class="testimonial-name">Marcus K.</div>
+            <div class="testimonial-role">Uber driver · Melbourne</div>
+          </div>
         </div>
       </div>
-
-      <div class="form-group">
-        <label class="form-label">ABN</label>
-        <input class="input-field" id="profile-abn" placeholder="XX XXX XXX XXX" maxlength="14" />
-        <div class="form-hint">Your Australian Business Number (11 digits)</div>
+      <div class="testimonial-card fade-up d2">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">"I drive both Uber and DiDi. Every other app made me combine everything manually. RideLog keeps them separate — exactly how I need it."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar" style="background:linear-gradient(135deg,#f97316,#ea580c);">SL</div>
+          <div>
+            <div class="testimonial-name">Sarah L.</div>
+            <div class="testimonial-role">Uber & DiDi driver · Sydney</div>
+          </div>
+        </div>
       </div>
-
-      <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:4px;">Save Changes</button>
-    </div>
-
-    <div class="profile-card fade-up delay-2">
-      <div class="section-title" style="font-size:16px;margin-bottom:6px;">Business Use Percentages</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">
-        Set percentages <strong>per quarter</strong> — they may differ if your driving intensity varied across the year. These apply to Common Business Expenses when calculating GST credits.
-      </p>
-
-      <div id="pct-quarters-container"></div>
-
-      <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:8px;">Save All Percentages</button>
-    </div>
-
-    <div class="profile-card fade-up delay-3" style="border-color:rgba(255,71,87,0.15);">
-      <div class="section-title" style="font-size:16px;margin-bottom:6px;">Account</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">RideLog is free to use, supported by ads.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-danger" onclick="signOut()">Sign Out</button>
-        <button class="btn btn-secondary" onclick="if(confirm('Clear saved Firebase config?')){localStorage.removeItem('ridelog_fb');location.reload();}" style="font-size:12px;">Reset Firebase Config</button>
+      <div class="testimonial-card fade-up d3">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">"My accountant was impressed. I handed over the income statement and BAS summary and we were done in 20 minutes. Used to take two hours."</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar" style="background:linear-gradient(135deg,#16a34a,#15803d);">JT</div>
+          <div>
+            <div class="testimonial-name">James T.</div>
+            <div class="testimonial-role">DiDi driver · Brisbane</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- ─────────────────────────────────── -->
-<!-- FIREBASE + APP LOGIC               -->
-<!-- ─────────────────────────────────── -->
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="wrap">
+    <div class="cta-card fade-up">
+      <h2>Start tracking your income today</h2>
+      <p>Free to use. Takes two minutes to set up. No spreadsheets.</p>
+      <a href="./index.html" class="btn-white">Get started free →</a>
+      <p class="cta-note">Sign up with Google or email · No credit card required</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <div class="nav-logo-mark" style="width:30px;height:30px;font-size:12px;">RL</div>
+        RideLog
+      </div>
+      <div class="footer-links">
+        <a href="#features" class="footer-link">Features</a>
+        <a href="#how" class="footer-link">How it works</a>
+        <a href="#platforms" class="footer-link">Platforms</a>
+        <a href="./index.html" class="footer-link">Sign in</a>
+        <a href="#" class="footer-link">Privacy Policy</a>
+        <a href="#" class="footer-link">Terms of Service</a>
+      </div>
+    </div>
+    <div class="footer-copy">
+      © 2025 RideLog. Built for Australian rideshare drivers. RideLog is a record-keeping tool and does not provide tax advice.
+    </div>
+  </div>
+</footer>
+
 <script>
-// ─── FIREBASE DYNAMIC LOADER ─────────────────────────────────────
-let auth, db, currentUser = null;
-
-// Stub signInWithGoogle — queues the call and replays it once Firebase is ready
-let _firebaseReady = false;
-let _pendingSignIn = false;
-window.signInWithGoogle = () => {
-  _pendingSignIn = true;
-  showToast('Connecting… tap again in a second', 'error');
-};
-window.signOut = () => { location.reload(); };
-
-// handleSignIn is what the button calls — shows loading state while waiting
-window.handleSignIn = () => {
-  const btn  = document.getElementById('google-btn');
-  const text = document.getElementById('google-btn-text');
-  if (btn)  btn.disabled = true;
-  if (text) text.textContent = 'Connecting…';
-  if (_firebaseReady) {
-    window.signInWithGoogle();
-  } else {
-    _pendingSignIn = true;
-  }
-};
-let appEntries  = [];
-// Per-quarter defaults: Q1–Q4 each have vehicle/phone/internet %
-const DEFAULT_PCTS = { vehicle:80, phone:50, internet:30 };
-function defaultQuarterPcts() {
-  const out = {};
-  ['Q1','Q2','Q3','Q4'].forEach(q=>{ out[q] = {...DEFAULT_PCTS}; });
-  return out;
-}
-let appProfile  = { abn:'', quarterPcts: defaultQuarterPcts() };
-let filterMode  = 'all';
-
-// Entry form state
-let selQuarter=null, selMonth=null, selType=null, selPlatform=null, selCategory=null;
-
-// ─── CATEGORY DATA ────────────────────────────────────────────────
-const CATEGORIES = {
-  uber: {
-    income: [
-      "Transportation: Gross Fares","Transportation: Split Fare Fee","Transportation: Toll Reimbursement",
-      "Transportation: Miscellaneous","Transportation: City/Gov Fees","Transportation: Airport Fees",
-      "Transportation: Booking Fees","Delivery: Delivery Fee","Delivery: Delivery Incentives",
-      "Delivery: Delivery Tolls Reimbursement","Other: Misc/Referrals/Incentives","Other: Tips"
-    ],
-    expense: [
-      "Uber: Service Fees","Uber: Other Uber Charges","Uber: 3rd Party Charges",
-      "Uber: Split Fare Fees","Uber: Tolls","Uber: City/Gov Fees","Uber: Airport Fees","Uber: Booking Fees",
-      // Common
-      "Vehicle: Fuel/EV","Vehicle: Registration","Vehicle: Insurance","Vehicle: Repairs","Vehicle: Car Wash",
-      "Admin: Mobile Phone","Admin: Internet","Admin: Music Subscriptions","Admin: Stationery",
-      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses"
-    ]
-  },
-  didi: {
-    income: [
-      "Fare: Gross Rider Fares","Fare: Booking Fee","Fare: Handling Fee","Fare: Tolls",
-      "Fare: Airport Fee","Fare: Gov Levy","Fare: Cancellation Fee","Fare: CTP Fee",
-      "Fare: Split Fare Fee","Fare: Other","Other Income: Rewards","Other Income: Other"
-    ],
-    expense: [
-      "DiDi: Service Fee","DiDi: Booking Fee","DiDi: Handling Fee","DiDi: Tolls",
-      "DiDi: Airport Fees","DiDi: Gov Levy","DiDi: CTP Fee","DiDi: Split Fare Fee","DiDi: Other Deductions",
-      // Common
-      "Vehicle: Fuel/EV","Vehicle: Registration","Vehicle: Insurance","Vehicle: Repairs","Vehicle: Car Wash",
-      "Admin: Mobile Phone","Admin: Internet","Admin: Music Subscriptions","Admin: Stationery",
-      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses"
-    ]
-  },
-  other: {
-    income: ["Other Income: Miscellaneous ABN Work"],
-    expense: [
-      "Vehicle: Fuel/EV","Vehicle: Registration","Vehicle: Insurance","Vehicle: Repairs","Vehicle: Car Wash",
-      "Admin: Mobile Phone","Admin: Internet","Admin: Music Subscriptions","Admin: Stationery",
-      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses"
-    ]
-  }
-};
-
-const QUARTERS = [
-  { id:'Q1', label:'Q1 Jul–Sep', months:['July','August','September'] },
-  { id:'Q2', label:'Q2 Oct–Dec', months:['October','November','December'] },
-  { id:'Q3', label:'Q3 Jan–Mar', months:['January','February','March'] },
-  { id:'Q4', label:'Q4 Apr–Jun', months:['April','May','June'] },
-];
-
-// Business use % categories
-const VEHICLE_CATS  = ['Vehicle: Fuel/EV','Vehicle: Registration','Vehicle: Insurance','Vehicle: Repairs','Vehicle: Car Wash'];
-const PHONE_CATS    = ['Admin: Mobile Phone'];
-const INTERNET_CATS = ['Admin: Internet'];
-
-// ─── HELPERS ─────────────────────────────────────────────────────
-window.showToast = (msg, type='success') => {
-  const t = document.getElementById('toast');
-  t.textContent = (type==='success'?'✓ ':'✗ ') + msg;
-  t.className = 'show ' + type;
-  clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(()=>{ t.classList.remove('show'); }, 3000);
-};
-
-window.fmt = v => '$' + Math.abs(v).toFixed(2);
-
-function getBusinessPct(cat, quarter) {
-  const qp = (appProfile.quarterPcts && quarter && appProfile.quarterPcts[quarter])
-    ? appProfile.quarterPcts[quarter]
-    : DEFAULT_PCTS;
-  if (PHONE_CATS.includes(cat))    return qp.phone/100;
-  if (INTERNET_CATS.includes(cat)) return qp.internet/100;
-  if (VEHICLE_CATS.includes(cat))  return qp.vehicle/100;
-  return 1; // 100% for platform fees & income
-}
-
-function calcGST(amount, cat, type, quarter) {
-  const gst = amount / 11;
-  if (type === 'income') return gst;
-  const pct = getBusinessPct(cat, quarter);
-  return gst * pct;
-}
-
-window.showScreen = (id) => {
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-'+id).classList.add('active');
-  if (id==='dashboard') renderDashboard();
-  if (id==='records')   renderRecords();
-  if (id==='profile')   renderProfile();
-  if (id==='entry')     resetEntry();
-};
-
-// ─── SCREENS INIT ─────────────────────────────────────────────────
-function initQuarterChoices() {
-  const el = document.getElementById('quarter-choices');
-  el.innerHTML = QUARTERS.map(q=>`
-    <div class="choice-btn" onclick="selectQuarter('${q.id}',this)">${q.label}</div>
-  `).join('');
-}
-
-window.selectQuarter = (id, el) => {
-  selQuarter = id; selMonth = null;
-  document.querySelectorAll('#quarter-choices .choice-btn').forEach(b=>b.classList.remove('selected'));
-  el.classList.add('selected');
-  const q = QUARTERS.find(x=>x.id===id);
-  const monthLabel = document.getElementById('month-label');
-  const monthTabs  = document.getElementById('month-tabs');
-  monthLabel.style.display = 'block';
-  monthTabs.innerHTML = q.months.map(m=>`<div class="month-tab" onclick="selectMonth('${m}',this)">${m}</div>`).join('');
-  document.getElementById('step1-next').disabled = true;
-};
-
-window.selectMonth = (m, el) => {
-  selMonth = m;
-  document.querySelectorAll('#month-tabs .month-tab').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('step1-next').disabled = false;
-};
-
-window.selectType = (type, el) => {
-  selType = type; selPlatform = null; selCategory = null;
-  document.querySelectorAll('#step-2 .choice-btn').forEach(b=>b.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('step2-next').disabled = false;
-  document.getElementById('category-select').innerHTML = '<option value="">Select platform first…</option>';
-  document.getElementById('step3-next').disabled = true;
-};
-
-window.selectPlatform = (p, el) => {
-  selPlatform = p; selCategory = null;
-  document.querySelectorAll('#step-3 .choice-btn').forEach(b=>b.classList.remove('selected'));
-  el.classList.add('selected');
-  const cats = (CATEGORIES[p]||{})[selType]||[];
-  const sel = document.getElementById('category-select');
-  sel.innerHTML = '<option value="">Choose category…</option>' +
-    cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-  sel.onchange = () => {
-    selCategory = sel.value;
-    document.getElementById('step3-next').disabled = !selCategory;
-  };
-  document.getElementById('step3-next').disabled = true;
-};
-
-window.goStep = (n) => {
-  document.querySelectorAll('.entry-step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('step-'+n).classList.add('active');
-  for(let i=1;i<=4;i++){
-    const p = document.getElementById('spill-'+i);
-    if(i<n) p.className='step-pill done';
-    else if(i===n) p.className='step-pill active';
-    else p.className='step-pill';
-  }
-  if(n===4) {
-    calcPreview();
-    document.getElementById('preview-panel').style.display='block';
-  }
-};
-
-window.validateAmount = () => {
-  const v = parseFloat(document.getElementById('amount-input').value);
-  document.getElementById('save-btn').disabled = !(v>0);
-  calcPreview();
-};
-
-window.calcPreview = () => {
-  const amount = parseFloat(document.getElementById('amount-input').value)||0;
-  if(!amount) return;
-  const gst = amount/11;
-  const exGst = amount - gst;
-  document.getElementById('prev-amount').textContent = fmt(amount);
-  document.getElementById('prev-gst').textContent    = fmt(gst);
-  document.getElementById('prev-ex').textContent     = fmt(exGst);
-  if(selType==='expense' && selCategory) {
-    const pct = getBusinessPct(selCategory, selQuarter);
-    const claimable = gst * pct;
-    document.getElementById('prev-biz-row').style.display  = 'flex';
-    document.getElementById('prev-claim-row').style.display = 'flex';
-    document.getElementById('prev-biz').textContent   = Math.round(pct*100)+'%';
-    document.getElementById('prev-claim').textContent = fmt(claimable);
-  }
-};
-
-function resetEntry() {
-  selQuarter=null; selMonth=null; selType=null; selPlatform=null; selCategory=null;
-  document.querySelectorAll('.entry-step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('step-1').classList.add('active');
-  document.querySelectorAll('.step-pill').forEach((p,i)=>p.className='step-pill'+(i===0?' active':''));
-  document.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('selected'));
-  document.querySelectorAll('.month-tab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('month-label').style.display='none';
-  document.getElementById('month-tabs').innerHTML='';
-  document.getElementById('step1-next').disabled=true;
-  document.getElementById('step2-next').disabled=true;
-  document.getElementById('step3-next').disabled=true;
-  document.getElementById('save-btn').disabled=true;
-  document.getElementById('amount-input').value='';
-  document.getElementById('notes-input').value='';
-  document.getElementById('preview-panel').style.display='none';
-  initQuarterChoices();
-}
-
-// ─── DASHBOARD ────────────────────────────────────────────────────
-function renderDashboard() {
-  const now = new Date();
-  const m   = now.getMonth();
-  const fy  = m>=6 ? `${now.getFullYear()}–${String(now.getFullYear()+1).slice(2)}`
-                   : `${now.getFullYear()-1}–${String(now.getFullYear()).slice(2)}`;
-  document.getElementById('fy-label').textContent = 'FY ' + fy;
-  const h = now.getHours();
-  document.getElementById('dash-greeting').textContent =
-    h<12?'Good morning':h<17?'Good afternoon':'Good evening';
-
-  let totalIncome=0, totalExp=0, totalGSTIn=0, totalGSTExp=0;
-  appEntries.forEach(e=>{
-    if(e.type==='income') { totalIncome+=e.amount; totalGSTIn+=e.gst; }
-    else { totalExp+=e.amount; totalGSTExp+=e.gst; }
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
   });
-  const net = totalGSTIn - totalGSTExp;
-  document.getElementById('dash-income').textContent = fmt(totalIncome);
-  document.getElementById('dash-expenses').textContent = fmt(totalExp);
-  const basEl = document.getElementById('dash-bas');
-  const basLb = document.getElementById('dash-bas-label');
-  basEl.textContent = fmt(net);
-  if(net>=0){ basEl.className='value red'; basLb.textContent='GST payable to ATO'; }
-  else{ basEl.className='value green'; basLb.textContent='GST refund from ATO'; }
 
-  // Quarters — all unlocked, all clickable
-  const grid = document.getElementById('quarters-grid');
-  grid.innerHTML = QUARTERS.map(q => {
-    const qEntries = appEntries.filter(e=>e.quarter===q.id);
-    const qInc     = qEntries.filter(e=>e.type==='income').reduce((a,e)=>a+e.amount,0);
-    const qExp     = qEntries.filter(e=>e.type==='expense').reduce((a,e)=>a+e.amount,0);
-    const qGSTIn   = qEntries.filter(e=>e.type==='income').reduce((a,e)=>a+e.gst,0);
-    const qGSTExp  = qEntries.filter(e=>e.type==='expense').reduce((a,e)=>a+e.gst,0);
-    const qNet     = qGSTIn - qGSTExp;
-    const payable  = qNet>=0;
-    return `<div class="quarter-card" onclick="showScreen('entry')">
-      <div class="q-label">${q.id}</div>
-      <div class="q-months">${q.months.join(' · ')}</div>
-      <div class="q-row"><span>Income</span><span>${fmt(qInc)}</span></div>
-      <div class="q-row"><span>Expenses</span><span>${fmt(qExp)}</span></div>
-      <div class="q-row"><span>GST Collected</span><span>${fmt(qGSTIn)}</span></div>
-      <div class="q-row"><span>GST Claimable</span><span>${fmt(qGSTExp)}</span></div>
-      <div class="q-total ${payable?'payable':'refund'}">
-        <span>${payable?'GST Payable':'GST Refund'}</span>
-        <span>${fmt(qNet)}</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ─── RECORDS ──────────────────────────────────────────────────────
-function renderRecords() {
-  let entries = [...appEntries].sort((a,b)=>b.ts-a.ts);
-  if(filterMode!=='all') {
-    entries = entries.filter(e=>
-      (filterMode==='income'&&e.type==='income')||
-      (filterMode==='expense'&&e.type==='expense')||
-      (filterMode==='uber'&&e.platform==='uber')||
-      (filterMode==='didi'&&e.platform==='didi')||
-      (filterMode==='other'&&e.platform==='other')
-    );
-  }
-  document.getElementById('records-count').textContent = entries.length+' entries';
-  const list = document.getElementById('records-list');
-  if(!entries.length) {
-    list.innerHTML = '<div class="empty-state">No entries yet. <a href="#" onclick="showScreen(\'entry\');return false;" style="color:var(--accent)">Add your first entry →</a></div>';
-  } else {
-    list.innerHTML = entries.map(e=>`
-      <div class="record-row">
-        <span><div class="record-badge ${e.type==='income'?'badge-income':'badge-expense'}">${e.type}</div></span>
-        <span>
-          <div class="record-badge badge-${e.platform}" style="margin-bottom:4px;">${e.platform}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${e.category}</div>
-        </span>
-        <span class="col-month" style="font-size:11px;color:var(--text-muted);">${e.quarter} · ${e.month}</span>
-        <span class="${e.type==='income'?'record-amount-pos':'record-amount-neg'}">${fmt(e.amount)}</span>
-        <span style="font-size:12px;color:var(--text-muted);">GST ${fmt(e.gst)}</span>
-        <button class="record-del" onclick="deleteEntry('${e.id}')">✕</button>
-      </div>
-    `).join('');
-  }
-  // GST Summary for filtered
-  const gstInc = entries.filter(e=>e.type==='income').reduce((a,e)=>a+e.gst,0);
-  const gstExp = entries.filter(e=>e.type==='expense').reduce((a,e)=>a+e.gst,0);
-  const net = gstInc - gstExp;
-  document.getElementById('rec-gst-income').textContent = fmt(gstInc);
-  document.getElementById('rec-gst-exp').textContent    = fmt(gstExp);
-  document.getElementById('rec-gst-net').textContent    = fmt(net);
-  const row = document.getElementById('rec-bas-row');
-  row.className = 'gst-row total ' + (net>=0?'payable':'refund');
-}
-
-window.filterRecords = (mode, el) => {
-  filterMode = mode;
-  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-  renderRecords();
-};
-
-window.deleteEntry = async (id) => {
-  if(!confirm('Delete this entry?')) return;
-  try {
-    await db.collection('users').doc(currentUser.uid).collection('entries').doc(id).delete();
-    appEntries = appEntries.filter(e=>e.id!==id);
-    renderRecords();
-    showToast('Entry deleted');
-  } catch(err) { showToast('Error: '+err.message,'error'); }
-};
-
-// ─── PROFILE ─────────────────────────────────────────────────────
-function buildPctAccordion() {
-  const container = document.getElementById('pct-quarters-container');
-  if(!container) return;
-  container.innerHTML = QUARTERS.map(q => {
-    const qp = (appProfile.quarterPcts && appProfile.quarterPcts[q.id])
-      ? appProfile.quarterPcts[q.id]
-      : {...DEFAULT_PCTS};
-    return `
-    <div class="q-pct-block" id="qpct-block-${q.id}">
-      <div class="q-pct-header" onclick="toggleQPct('${q.id}')">
-        <div class="q-pct-header-left">
-          <span class="q-pct-label">${q.id}</span>
-          <span class="q-pct-months">${q.months.join(' · ')}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="q-pct-summary">
-            <span class="q-pct-chip" id="chip-${q.id}-vehicle">🚗 ${qp.vehicle}%</span>
-            <span class="q-pct-chip" id="chip-${q.id}-phone">📱 ${qp.phone}%</span>
-            <span class="q-pct-chip" id="chip-${q.id}-internet">🌐 ${qp.internet}%</span>
-          </div>
-          <span class="q-pct-chevron">▾</span>
-        </div>
-      </div>
-      <div class="q-pct-body">
-        <div class="form-group">
-          <label class="form-label">Motor Vehicle %</label>
-          <div class="slider-wrap">
-            <input type="range" min="0" max="100"
-              id="pct-${q.id}-vehicle" value="${qp.vehicle}"
-              oninput="updateChip('${q.id}','vehicle',this.value)" />
-            <div class="slider-val" id="val-${q.id}-vehicle">${qp.vehicle}%</div>
-          </div>
-          <div class="form-hint">Applies to: Fuel, Registration, Insurance, Repairs, Car Wash</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Mobile Phone %</label>
-          <div class="slider-wrap">
-            <input type="range" min="0" max="100"
-              id="pct-${q.id}-phone" value="${qp.phone}"
-              oninput="updateChip('${q.id}','phone',this.value)" />
-            <div class="slider-val" id="val-${q.id}-phone">${qp.phone}%</div>
-          </div>
-          <div class="form-hint">Applies to: Mobile Phone subscription/plan</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Internet %</label>
-          <div class="slider-wrap">
-            <input type="range" min="0" max="100"
-              id="pct-${q.id}-internet" value="${qp.internet}"
-              oninput="updateChip('${q.id}','internet',this.value)" />
-            <div class="slider-val" id="val-${q.id}-internet">${qp.internet}%</div>
-          </div>
-          <div class="form-hint">Applies to: Internet subscription</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-window.toggleQPct = (qid) => {
-  const block = document.getElementById('qpct-block-'+qid);
-  block.classList.toggle('open');
-};
-
-window.updateChip = (qid, type, val) => {
-  document.getElementById(`val-${qid}-${type}`).textContent = val+'%';
-  const icons = { vehicle:'🚗', phone:'📱', internet:'🌐' };
-  document.getElementById(`chip-${qid}-${type}`).textContent = icons[type]+' '+val+'%';
-  calcPreview();
-};
-
-function renderProfile() {
-  if(!currentUser) return;
-  const initials = (currentUser.displayName||currentUser.email||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  document.getElementById('profile-avatar-lg').textContent = initials;
-  document.getElementById('profile-name').textContent  = currentUser.displayName||'Driver';
-  document.getElementById('profile-email').textContent = currentUser.email||'';
-  document.getElementById('profile-abn').value         = appProfile.abn||'';
-  buildPctAccordion();
-}
-
-window.saveProfile = async () => {
-  appProfile.abn = document.getElementById('profile-abn').value;
-  // Read all quarter sliders
-  if(!appProfile.quarterPcts) appProfile.quarterPcts = defaultQuarterPcts();
-  QUARTERS.forEach(q => {
-    const v = parseInt(document.getElementById(`pct-${q.id}-vehicle`)?.value ?? DEFAULT_PCTS.vehicle);
-    const p = parseInt(document.getElementById(`pct-${q.id}-phone`)?.value   ?? DEFAULT_PCTS.phone);
-    const i = parseInt(document.getElementById(`pct-${q.id}-internet`)?.value ?? DEFAULT_PCTS.internet);
-    appProfile.quarterPcts[q.id] = { vehicle:v, phone:p, internet:i };
-  });
-  try {
-    await db.collection('users').doc(currentUser.uid).collection('profile').doc('settings').set(appProfile);
-    showToast('Profile saved');
-  } catch(e){ showToast('Error saving: '+e.message,'error'); }
-};
-
-// ─── SAVE ENTRY ───────────────────────────────────────────────────
-window.saveEntry = async () => {
-  const amount = parseFloat(document.getElementById('amount-input').value);
-  const notes  = document.getElementById('notes-input').value;
-  const gst    = calcGST(amount, selCategory, selType, selQuarter);
-  const entry  = {
-    quarter: selQuarter, month: selMonth, type: selType,
-    platform: selPlatform, category: selCategory,
-    amount, gst, notes, ts: Date.now()
-  };
-  try {
-    const ref = await db.collection('users').doc(currentUser.uid).collection('entries').add(entry);
-    entry.id = ref.id;
-    appEntries.push(entry);
-    showToast('Entry saved!');
-    showScreen('dashboard');
-  } catch(e){ showToast('Error: '+e.message,'error'); }
-};
-
-// ─── FIREBASE CONFIG ──────────────────────────────────────────────
-// If you've hardcoded your keys below, great — they'll be used directly.
-// If still placeholder, the app shows a setup screen instead of hanging.
-// Keys can also be saved via the setup screen and stored in localStorage.
-
-const HARDCODED_CONFIG = {
-  apiKey:            "AIzaSyDrFs261VZg4yD27Sq-RV13echO-_vO68w",
-  authDomain:        "ridelog-8b563.firebaseapp.com",
-  projectId:         "ridelog-8b563",
-  storageBucket:     "ridelog-8b563.firebasestorage.app",
-  messagingSenderId: "432578574488",
-  appId:             "1:432578574488:web:2f784f913ad16ef15f78ed",
-  measurementId:     "G-G387BPFS12"
-};
-
-function isPlaceholderConfig(cfg) {
-  return !cfg || cfg.apiKey.startsWith('YOUR_') || cfg.projectId.startsWith('YOUR_');
-}
-
-function getFirebaseConfig() {
-  // 1. Try localStorage (saved via setup screen)
-  const stored = localStorage.getItem('ridelog_fb');
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (!isPlaceholderConfig(parsed)) return parsed;
-    } catch(e) {}
-  }
-  // 2. Fall back to hardcoded
-  if (!isPlaceholderConfig(HARDCODED_CONFIG)) return HARDCODED_CONFIG;
-  // 3. Nothing valid — return null
-  return null;
-}
-
-window.saveSetupConfig = () => {
-  const cfg = {
-    apiKey:            document.getElementById('setup-apiKey').value.trim(),
-    authDomain:        document.getElementById('setup-authDomain').value.trim(),
-    projectId:         document.getElementById('setup-projectId').value.trim(),
-    storageBucket:     document.getElementById('setup-storageBucket').value.trim(),
-    messagingSenderId: document.getElementById('setup-messagingSenderId').value.trim(),
-    appId:             document.getElementById('setup-appId').value.trim(),
-  };
-  const missing = Object.entries(cfg).filter(([,v])=>!v).map(([k])=>k);
-  if (missing.length) { showToast('Please fill in all fields','error'); return; }
-  localStorage.setItem('ridelog_fb', JSON.stringify(cfg));
-  showToast('Config saved — connecting…');
-  setTimeout(() => location.reload(), 1000);
-};
-
-// ─── FIREBASE INIT ────────────────────────────────────────────────
-function hideLoading() {
-  const el = document.getElementById('loading-overlay');
-  if (el) el.style.display = 'none';
-}
-
-function initFirebase() {
-  const timeout = setTimeout(() => {
-    hideLoading();
-    showScreen('login');
-    showToast('Connection timed out — check your internet', 'error');
-  }, 8000);
-
-  const config = getFirebaseConfig();
-
-  if (!config) {
-    clearTimeout(timeout);
-    hideLoading();
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-setup').classList.add('active');
-    return;
-  }
-
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(config);
-    auth = firebase.auth();
-    db   = firebase.firestore();
-
-    window.signInWithGoogle = async () => {
-      try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        await auth.signInWithPopup(provider);
-      } catch(e) {
-        const btn  = document.getElementById('google-btn');
-        const text = document.getElementById('google-btn-text');
-        if (btn)  btn.disabled = false;
-        if (text) text.textContent = 'Continue with Google';
-        const msg = e.code === 'auth/unauthorized-domain'
-          ? 'Add this domain to Firebase → Authentication → Settings → Authorized Domains.'
-          : 'Sign-in failed: ' + e.message;
-        showToast(msg, 'error');
-      }
-    };
-
-    _firebaseReady = true;
-    // If user already tapped the button before Firebase was ready, trigger it now
-    if (_pendingSignIn) {
-      _pendingSignIn = false;
-      window.signInWithGoogle();
-    }
-
-    window.signOut = async () => {
-      await auth.signOut();
-      appEntries = []; appProfile = { abn:'', quarterPcts: defaultQuarterPcts() };
-      currentUser = null;
-      showScreen('login');
-    };
-
-    auth.onAuthStateChanged(async user => {
-      clearTimeout(timeout);
-      clearTimeout(window._loadFallback);
-      hideLoading();
-      if (user) {
-        currentUser = user;
-        updateAvatars(user);
-        try {
-          const pSnap = await db.collection('users').doc(user.uid).collection('profile').doc('settings').get();
-          if (pSnap.exists) {
-            const saved = pSnap.data();
-            if (saved.pctVehicle !== undefined && !saved.quarterPcts) {
-              const qp = defaultQuarterPcts();
-              ['Q1','Q2','Q3','Q4'].forEach(q => {
-                qp[q] = { vehicle:saved.pctVehicle||80, phone:saved.pctPhone||50, internet:saved.pctInternet||30 };
-              });
-              saved.quarterPcts = qp;
-            }
-            appProfile = { ...appProfile, ...saved };
-            if (!appProfile.quarterPcts) appProfile.quarterPcts = defaultQuarterPcts();
-          }
-        } catch(e) {}
-        try {
-          const snap = await db.collection('users').doc(user.uid).collection('entries').get();
-          appEntries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch(e) {}
-        showScreen('dashboard');
-      } else {
-        currentUser = null;
-        showScreen('login');
+  // Scroll-triggered fade-up for elements below the fold
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.animationPlayState = 'running';
+        observer.unobserve(e.target);
       }
     });
+  }, { threshold: 0.12 });
 
-  } catch(e) {
-    clearTimeout(timeout);
-    hideLoading();
-    showToast('Firebase error: ' + e.message, 'error');
-    showScreen('login');
-  }
-}
-
-function updateAvatars(user) {
-  const initials = (user.displayName||user.email||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  ['','entry','records','profile'].forEach(s=>{
-    const el = document.getElementById('nav-avatar'+(s?'-'+s:''));
-    if(el) el.textContent = initials;
+  document.querySelectorAll('.fade-up').forEach(el => {
+    el.style.animationPlayState = 'paused';
+    observer.observe(el);
   });
-}
-
-// Init
-initQuarterChoices();
-initFirebase();
 </script>
 </body>
 </html>
