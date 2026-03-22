@@ -753,6 +753,28 @@
   .q-pct-block.open .q-pct-body { display: block; }
 
 
+  /* ─── FY SELECTOR ─── */
+  .fy-selector-wrap { display: flex; align-items: center; }
+  .fy-select {
+    padding: 8px 32px 8px 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%230ea5e9' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    box-shadow: 0 1px 4px rgba(14,165,233,0.1);
+    transition: border-color 0.2s;
+  }
+  .fy-select:focus { outline: none; border-color: var(--accent); }
+  .fy-select option { background: var(--surface); color: var(--text); font-family: 'DM Mono', monospace; }
+
   /* ─── AUTH DIVIDER ─── */
   .auth-divider {
     display: flex; align-items: center; gap: 12px;
@@ -972,6 +994,10 @@
           <div class="section-title">Dashboard</div>
           <div class="section-subtitle" id="dash-greeting">Good morning</div>
         </div>
+        <div class="fy-selector-wrap">
+          <select id="fy-select" onchange="onFYChange(this.value)" class="fy-select">
+          </select>
+        </div>
       </div>
 
       <!-- ── AD UNIT — uncomment and replace IDs after AdSense approval ──
@@ -1063,7 +1089,12 @@
     <!-- Step 1: Quarter & Month -->
     <div class="entry-step active fade-up" id="step-1">
       <div class="entry-label">Step 1 of 4 — Select Period</div>
-      <div class="entry-label" style="margin-top:16px;">Quarter</div>
+      <div class="entry-label" style="margin-top:16px;">Financial Year</div>
+      <div style="margin-bottom:16px;">
+        <select id="entry-fy-select" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)">
+        </select>
+      </div>
+      <div class="entry-label">Quarter</div>
       <div class="choice-grid" id="quarter-choices"></div>
       <div class="entry-label" id="month-label" style="display:none;">Month</div>
       <div class="month-tabs" id="month-tabs"></div>
@@ -1153,6 +1184,10 @@
       <div>
         <div class="section-title">All Records</div>
         <div class="section-subtitle" id="records-count">0 entries</div>
+      </div>
+      <div class="fy-selector-wrap">
+        <select id="records-fy-select" class="fy-select" onchange="onRecordsFYChange(this.value)">
+        </select>
       </div>
     </div>
 
@@ -1286,6 +1321,75 @@ function defaultQuarterPcts() {
 let appProfile  = { abn:'', quarterPcts: defaultQuarterPcts() };
 let filterMode  = 'all';
 
+// ─── FINANCIAL YEAR HELPERS ──────────────────────────────────────
+// Australian FY runs Jul–Jun. FY "2024-25" starts Jul 2024.
+function getCurrentFY() {
+  const now = new Date();
+  const m   = now.getMonth(); // 0=Jan
+  const yr  = now.getFullYear();
+  return m >= 6 ? yr : yr - 1; // FY start year
+}
+
+let selectedFY  = getCurrentFY(); // defaults to current FY
+
+// ─── FINANCIAL YEAR HELPERS (continued) ─────────────────────────
+// Returns "2024-25" style string from start year
+function fyLabel(startYear) {
+  return `${startYear}–${String(startYear + 1).slice(2)}`;
+}
+
+// Get all FY start years that have entries, plus current FY
+function getAvailableFYs() {
+  const fys = new Set();
+  const cur = getCurrentFY();
+  // Always include current FY and 2 previous years
+  fys.add(cur);
+  fys.add(cur - 1);
+  fys.add(cur - 2);
+  // Add any FYs that have actual entries
+  appEntries.forEach(e => {
+    if (e.fy) {
+      fys.add(e.fy);
+    } else if (e.ts) {
+      // Legacy entries without fy — infer from timestamp
+      const d = new Date(e.ts);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      fys.add(m >= 6 ? y : y - 1);
+    }
+  });
+  return [...fys].sort((a, b) => b - a); // newest first
+}
+
+// Get entries for a specific FY (using fy field, or inferring from ts)
+function entriesForFY(fyStart) {
+  return appEntries.filter(e => {
+    if (e.fy !== undefined) return e.fy === fyStart;
+    // Legacy entries without fy — infer from timestamp
+    if (e.ts) {
+      const d = new Date(e.ts);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      return (m >= 6 ? y : y - 1) === fyStart;
+    }
+    return false;
+  });
+}
+
+function buildFYSelector() {
+  const sel = document.getElementById('fy-select');
+  if (!sel) return;
+  const fys = getAvailableFYs();
+  sel.innerHTML = fys.map(fy =>
+    `<option value="${fy}" ${fy === selectedFY ? 'selected' : ''}>FY ${fyLabel(fy)}</option>`
+  ).join('');
+}
+
+window.onFYChange = (val) => {
+  selectedFY = parseInt(val);
+  renderDashboard();
+};
+
 // Entry form state
 let selQuarter=null, selMonth=null, selType=null, selPlatform=null, selCategory=null;
 
@@ -1372,11 +1476,38 @@ function calcGST(amount, cat, type, quarter) {
   return gst * pct;
 }
 
+window.onEntryFYChange = (val) => {
+  selectedFY = parseInt(val);
+};
+
+window.onRecordsFYChange = (val) => {
+  selectedFY = parseInt(val);
+  renderRecords();
+};
+
+function buildEntryFYSelector() {
+  const sel = document.getElementById('entry-fy-select');
+  if (!sel) return;
+  const fys = getAvailableFYs();
+  sel.innerHTML = fys.map(fy =>
+    `<option value="${fy}" ${fy === selectedFY ? 'selected' : ''}>FY ${fyLabel(fy)}</option>`
+  ).join('');
+}
+
+function buildRecordsFYSelector() {
+  const sel = document.getElementById('records-fy-select');
+  if (!sel) return;
+  const fys = getAvailableFYs();
+  sel.innerHTML = fys.map(fy =>
+    `<option value="${fy}" ${fy === selectedFY ? 'selected' : ''}>FY ${fyLabel(fy)}</option>`
+  ).join('');
+}
+
 window.showScreen = (id) => {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+id).classList.add('active');
   if (id==='dashboard') renderDashboard();
-  if (id==='records')   renderRecords();
+  if (id==='records')   { buildRecordsFYSelector(); renderRecords(); }
   if (id==='profile')   renderProfile();
   if (id==='entry')     resetEntry();
 };
@@ -1472,6 +1603,7 @@ window.calcPreview = () => {
 };
 
 function resetEntry() {
+  if (!selectedFY) selectedFY = getCurrentFY();
   selQuarter=null; selMonth=null; selType=null; selPlatform=null; selCategory=null;
   document.querySelectorAll('.entry-step').forEach(s=>s.classList.remove('active'));
   document.getElementById('step-1').classList.add('active');
@@ -1487,22 +1619,28 @@ function resetEntry() {
   document.getElementById('amount-input').value='';
   document.getElementById('notes-input').value='';
   document.getElementById('preview-panel').style.display='none';
+  buildEntryFYSelector();
   initQuarterChoices();
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────
 function renderDashboard() {
-  const now = new Date();
-  const m   = now.getMonth();
-  const fy  = m>=6 ? `${now.getFullYear()}–${String(now.getFullYear()+1).slice(2)}`
-                   : `${now.getFullYear()-1}–${String(now.getFullYear()).slice(2)}`;
-  document.getElementById('fy-label').textContent = 'FY ' + fy;
-  const h = now.getHours();
+  const h = new Date().getHours();
   document.getElementById('dash-greeting').textContent =
     h<12?'Good morning':h<17?'Good afternoon':'Good evening';
 
+  // Ensure selectedFY is set
+  if (!selectedFY) selectedFY = getCurrentFY();
+
+  // Build / refresh FY selector
+  buildFYSelector();
+  document.getElementById('fy-label').textContent = 'FY ' + fyLabel(selectedFY);
+
+  // Filter entries to selected FY
+  const fyEntries = entriesForFY(selectedFY);
+
   let totalIncome=0, totalExp=0, totalGSTIn=0, totalGSTExp=0;
-  appEntries.forEach(e=>{
+  fyEntries.forEach(e=>{
     if(e.type==='income') { totalIncome+=e.amount; totalGSTIn+=e.gst; }
     else { totalExp+=e.amount; totalGSTExp+=e.gst; }
   });
@@ -1515,18 +1653,18 @@ function renderDashboard() {
   if(net>=0){ basEl.className='value red'; basLb.textContent='GST payable to ATO'; }
   else{ basEl.className='value green'; basLb.textContent='GST refund from ATO'; }
 
-  // Quarters — all unlocked, all clickable
+  // Quarters — filtered to selected FY
   const grid = document.getElementById('quarters-grid');
   grid.innerHTML = QUARTERS.map(q => {
-    const qEntries = appEntries.filter(e=>e.quarter===q.id);
+    const qEntries = fyEntries.filter(e=>e.quarter===q.id);
     const qInc     = qEntries.filter(e=>e.type==='income').reduce((a,e)=>a+e.amount,0);
     const qExp     = qEntries.filter(e=>e.type==='expense').reduce((a,e)=>a+e.amount,0);
     const qGSTIn   = qEntries.filter(e=>e.type==='income').reduce((a,e)=>a+e.gst,0);
     const qGSTExp  = qEntries.filter(e=>e.type==='expense').reduce((a,e)=>a+e.gst,0);
     const qNet     = qGSTIn - qGSTExp;
     const payable  = qNet>=0;
-    return `<div class="quarter-card" onclick="showScreen('entry')">
-      <div class="q-label">${q.id}</div>
+    return `<div class="quarter-card" onclick="selectEntryQuarter('${q.id}')">
+      <div class="q-label">${q.id} <span style="font-size:10px;font-weight:400;color:var(--text-muted);">FY ${fyLabel(selectedFY)}</span></div>
       <div class="q-months">${q.months.join(' · ')}</div>
       <div class="q-row"><span>Income</span><span>${fmt(qInc)}</span></div>
       <div class="q-row"><span>Expenses</span><span>${fmt(qExp)}</span></div>
@@ -1540,9 +1678,22 @@ function renderDashboard() {
   }).join('');
 }
 
+// Clicking a quarter card pre-selects that quarter and FY in the entry form
+window.selectEntryQuarter = (qid) => {
+  showScreen('entry');
+  // Pre-select the quarter after the entry screen resets
+  setTimeout(() => {
+    const btns = document.querySelectorAll('#quarter-choices .choice-btn');
+    btns.forEach(b => {
+      if (b.textContent.includes(qid)) b.click();
+    });
+  }, 50);
+};
+
 // ─── RECORDS ──────────────────────────────────────────────────────
 function renderRecords() {
-  let entries = [...appEntries].sort((a,b)=>b.ts-a.ts);
+  // Start with entries for selected FY only
+  let entries = entriesForFY(selectedFY || getCurrentFY()).sort((a,b)=>b.ts-a.ts);
   if(filterMode!=='all') {
     entries = entries.filter(e=>
       (filterMode==='income'&&e.type==='income')||
@@ -1552,7 +1703,8 @@ function renderRecords() {
       (filterMode==='other'&&e.platform==='other')
     );
   }
-  document.getElementById('records-count').textContent = entries.length+' entries';
+  document.getElementById('records-count').textContent =
+    entries.length + ' entries · FY ' + fyLabel(selectedFY || getCurrentFY());
   const list = document.getElementById('records-list');
   if(!entries.length) {
     list.innerHTML = '<div class="empty-state">No entries yet. <a href="#" onclick="showScreen(\'entry\');return false;" style="color:var(--accent)">Add your first entry →</a></div>';
@@ -1703,6 +1855,7 @@ window.saveEntry = async () => {
   const notes  = document.getElementById('notes-input').value;
   const gst    = calcGST(amount, selCategory, selType, selQuarter);
   const entry  = {
+    fy: selectedFY || getCurrentFY(),
     quarter: selQuarter, month: selMonth, type: selType,
     platform: selPlatform, category: selCategory,
     amount, gst, notes, ts: Date.now()
@@ -1927,7 +2080,11 @@ function initFirebase() {
 }
 
 function updateAvatars(user) {
-  const initials = (user.displayName||user.email||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  // Use displayName if available, else first letter of email
+  const name = user.displayName || user.email || '?';
+  const initials = name.includes(' ')
+    ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+    : name.slice(0,2).toUpperCase();
   ['','entry','records','profile'].forEach(s=>{
     const el = document.getElementById('nav-avatar'+(s?'-'+s:''));
     if(el) el.textContent = initials;
@@ -1969,7 +2126,8 @@ window.switchAuthTab = (tab) => {
 };
 
 // ─── PASSWORD STRENGTH INDICATOR ─────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+// Password strength — script is at bottom so DOM is ready
+(function() {
   const pw = document.getElementById('signup-password');
   if (pw) {
     pw.addEventListener('input', () => {
@@ -1987,7 +2145,7 @@ document.addEventListener('DOMContentLoaded', () => {
       bar.style.background = strength <= 1 ? 'var(--danger)' : strength <= 3 ? 'var(--accent2)' : '#16a34a';
     });
   }
-});
+})();
 
 // Init
 initQuarterChoices();
