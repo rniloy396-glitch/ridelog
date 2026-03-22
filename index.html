@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>RideLog — GST & Tax Assistant</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<!-- Firebase compat SDKs — loaded before any app code -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
   :root {
     --bg: #0d0f14;
@@ -870,14 +874,14 @@
     <div class="logo-mark">RL</div>
     <h1>RideLog</h1>
     <p>GST & Tax Assistant for Australian<br>rideshare & delivery drivers</p>
-    <button class="btn-google" onclick="signInWithGoogle()">
+    <button class="btn-google" id="google-btn" onclick="handleSignIn()">
       <svg width="20" height="20" viewBox="0 0 48 48">
         <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
         <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 19 12 24 12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
         <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.4 35.5 26.8 36 24 36c-5.2 0-9.7-3.4-11.3-8l-6.6 5.1C9.5 39.5 16.3 44 24 44z"/>
         <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.3 4.1-4.2 5.5l6.2 5.2C37 38.3 44 33 44 24c0-1.3-.1-2.6-.4-3.9z"/>
       </svg>
-      Continue with Google
+      <span id="google-btn-text">Continue with Google</span>
     </button>
     <div class="login-footer">
       By continuing you agree to our Terms of Service.<br>
@@ -1185,9 +1189,31 @@
 <!-- ─────────────────────────────────── -->
 <!-- FIREBASE + APP LOGIC               -->
 <!-- ─────────────────────────────────── -->
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
+<script>
 // ─── FIREBASE DYNAMIC LOADER ─────────────────────────────────────
 let auth, db, currentUser = null;
+
+// Stub signInWithGoogle — queues the call and replays it once Firebase is ready
+let _firebaseReady = false;
+let _pendingSignIn = false;
+window.signInWithGoogle = () => {
+  _pendingSignIn = true;
+  showToast('Connecting… tap again in a second', 'error');
+};
+window.signOut = () => { location.reload(); };
+
+// handleSignIn is what the button calls — shows loading state while waiting
+window.handleSignIn = () => {
+  const btn  = document.getElementById('google-btn');
+  const text = document.getElementById('google-btn-text');
+  if (btn)  btn.disabled = true;
+  if (text) text.textContent = 'Connecting…';
+  if (_firebaseReady) {
+    window.signInWithGoogle();
+  } else {
+    _pendingSignIn = true;
+  }
+};
 let appEntries  = [];
 // Per-quarter defaults: Q1–Q4 each have vehicle/phone/internet %
 const DEFAULT_PCTS = { vehicle:80, phone:50, internet:30 };
@@ -1505,8 +1531,7 @@ window.filterRecords = (mode, el) => {
 window.deleteEntry = async (id) => {
   if(!confirm('Delete this entry?')) return;
   try {
-    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await deleteDoc(doc(db, 'users', currentUser.uid, 'entries', id));
+    await db.collection('users').doc(currentUser.uid).collection('entries').doc(id).delete();
     appEntries = appEntries.filter(e=>e.id!==id);
     renderRecords();
     showToast('Entry deleted');
@@ -1606,8 +1631,7 @@ window.saveProfile = async () => {
     appProfile.quarterPcts[q.id] = { vehicle:v, phone:p, internet:i };
   });
   try {
-    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await setDoc(doc(db,'users',currentUser.uid,'profile','settings'), appProfile);
+    await db.collection('users').doc(currentUser.uid).collection('profile').doc('settings').set(appProfile);
     showToast('Profile saved');
   } catch(e){ showToast('Error saving: '+e.message,'error'); }
 };
@@ -1623,8 +1647,7 @@ window.saveEntry = async () => {
     amount, gst, notes, ts: Date.now()
   };
   try {
-    const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const ref = await addDoc(collection(db,'users',currentUser.uid,'entries'), entry);
+    const ref = await db.collection('users').doc(currentUser.uid).collection('entries').add(entry);
     entry.id = ref.id;
     appEntries.push(entry);
     showToast('Entry saved!');
@@ -1688,12 +1711,11 @@ function hideLoading() {
   if (el) el.style.display = 'none';
 }
 
-async function initFirebase() {
-  // Safety net — never hang more than 8 seconds
+function initFirebase() {
   const timeout = setTimeout(() => {
     hideLoading();
     showScreen('login');
-    showToast('Connection timed out — check your internet','error');
+    showToast('Connection timed out — check your internet', 'error');
   }, 8000);
 
   const config = getFirebaseConfig();
@@ -1701,53 +1723,56 @@ async function initFirebase() {
   if (!config) {
     clearTimeout(timeout);
     hideLoading();
-    // Show setup screen instead of login
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-setup').classList.add('active');
     return;
   }
 
   try {
-    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut: fbSignOut } =
-      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-    const { getFirestore, collection, getDocs, doc, getDoc } =
-      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-
-    const app = getApps().length ? getApps()[0] : initializeApp(config);
-    auth = getAuth(app);
-    db   = getFirestore(app);
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    auth = firebase.auth();
+    db   = firebase.firestore();
 
     window.signInWithGoogle = async () => {
       try {
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
       } catch(e) {
+        const btn  = document.getElementById('google-btn');
+        const text = document.getElementById('google-btn-text');
+        if (btn)  btn.disabled = false;
+        if (text) text.textContent = 'Continue with Google';
         const msg = e.code === 'auth/unauthorized-domain'
-          ? 'This domain isn\'t authorised in Firebase. Add it under Authentication → Settings → Authorized Domains.'
+          ? 'Add this domain to Firebase → Authentication → Settings → Authorized Domains.'
           : 'Sign-in failed: ' + e.message;
         showToast(msg, 'error');
       }
     };
 
+    _firebaseReady = true;
+    // If user already tapped the button before Firebase was ready, trigger it now
+    if (_pendingSignIn) {
+      _pendingSignIn = false;
+      window.signInWithGoogle();
+    }
+
     window.signOut = async () => {
-      await fbSignOut(auth);
+      await auth.signOut();
       appEntries = []; appProfile = { abn:'', quarterPcts: defaultQuarterPcts() };
       currentUser = null;
       showScreen('login');
     };
 
-    onAuthStateChanged(auth, async user => {
+    auth.onAuthStateChanged(async user => {
       clearTimeout(timeout);
       clearTimeout(window._loadFallback);
       hideLoading();
       if (user) {
         currentUser = user;
         updateAvatars(user);
-        // Load profile
         try {
-          const pSnap = await getDoc(doc(db,'users',user.uid,'profile','settings'));
-          if (pSnap.exists()) {
+          const pSnap = await db.collection('users').doc(user.uid).collection('profile').doc('settings').get();
+          if (pSnap.exists) {
             const saved = pSnap.data();
             if (saved.pctVehicle !== undefined && !saved.quarterPcts) {
               const qp = defaultQuarterPcts();
@@ -1760,10 +1785,9 @@ async function initFirebase() {
             if (!appProfile.quarterPcts) appProfile.quarterPcts = defaultQuarterPcts();
           }
         } catch(e) {}
-        // Load entries
         try {
-          const snap = await getDocs(collection(db,'users',user.uid,'entries'));
-          appEntries = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+          const snap = await db.collection('users').doc(user.uid).collection('entries').get();
+          appEntries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch(e) {}
         showScreen('dashboard');
       } else {
@@ -1777,7 +1801,6 @@ async function initFirebase() {
     hideLoading();
     showToast('Firebase error: ' + e.message, 'error');
     showScreen('login');
-    window.signInWithGoogle = () => showToast('Firebase not connected — check your config', 'error');
   }
 }
 
@@ -1792,3 +1815,6 @@ function updateAvatars(user) {
 // Init
 initQuarterChoices();
 initFirebase();
+</script>
+</body>
+</html>
