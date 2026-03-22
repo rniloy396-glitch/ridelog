@@ -2491,16 +2491,21 @@ function initFirebase() {
     window.signInWithGoogle = async () => {
       try {
         const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         await auth.signInWithPopup(provider);
       } catch(e) {
         const btn  = document.getElementById('google-btn');
         const text = document.getElementById('google-btn-text');
         if (btn)  btn.disabled = false;
         if (text) text.textContent = 'Continue with Google';
-        const msg = e.code === 'auth/unauthorized-domain'
-          ? 'Add this domain to Firebase → Authentication → Settings → Authorized Domains.'
-          : 'Sign-in failed: ' + e.message;
-        showToast(msg, 'error');
+        if (e.code === 'auth/popup-closed-by-user' ||
+            e.code === 'auth/cancelled-popup-request') return;
+        const msgs = {
+          'auth/unauthorized-domain':    'This domain isn\'t authorised yet. Add it in Firebase → Authentication → Authorized Domains.',
+          'auth/popup-blocked':          'Popup was blocked by your browser. Please allow popups for this site and try again.',
+          'auth/network-request-failed': 'No internet connection. Please check your network and try again.',
+        };
+        showToast(msgs[e.code] || 'Sign-in failed. Please try again.', 'error');
       }
     };
 
