@@ -174,61 +174,124 @@
     padding: 14px 24px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 100;
+    position: sticky; top: 0; z-index: 200;
     box-shadow: var(--shadow-sm);
   }
   .topnav-logo {
     display: flex; align-items: center; gap: 10px;
     font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 18px;
-    color: var(--text);
+    font-weight: 800; font-size: 18px; color: var(--text);
   }
   .topnav-logo .dot {
-    width: 8px; height: 8px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: pulse-glow 2s ease infinite;
+    width: 8px; height: 8px; background: var(--accent);
+    border-radius: 50%; animation: pulse-glow 2s ease infinite;
   }
   .nav-right { display: flex; align-items: center; gap: 8px; }
   .nav-btn {
-    padding: 7px 14px;
-    background: transparent;
-    border: 1.5px solid transparent;
-    border-radius: 8px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
+    padding: 7px 14px; background: transparent;
+    border: 1.5px solid transparent; border-radius: 8px;
+    color: var(--text-muted); font-family: 'DM Mono', monospace;
+    font-size: 12px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
   }
-  .nav-btn:hover {
-    background: var(--accent-light);
-    color: var(--accent);
-    border-color: rgba(14,165,233,0.25);
-  }
-  .nav-btn.active {
-    background: var(--accent-light);
-    color: var(--accent);
-    border-color: rgba(14,165,233,0.3);
-    font-weight: 500;
-  }
-  .nav-btn.primary {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-  .nav-btn.primary:hover { background: #0284c7; }
+  .nav-btn:hover { background: var(--accent-light); color: var(--accent); border-color: rgba(14,165,233,0.25); }
+  .nav-btn.active { background: var(--accent-light); color: var(--accent); border-color: rgba(14,165,233,0.3); font-weight: 500; }
+  .nav-btn.cta { background: var(--accent); color: #fff; border-color: var(--accent); font-family: 'Syne', sans-serif; font-weight: 700; }
+  .nav-btn.cta:hover { background: #0284c7; }
   .avatar {
     width: 32px; height: 32px;
     background: linear-gradient(135deg, var(--accent), #0284c7);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: #fff;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(14,165,233,0.3);
+  }
+
+  /* ─── DRAWER SYSTEM ─── */
+  .drawer-overlay {
+    position: fixed; inset: 0;
+    background: rgba(12,26,41,0.45);
+    backdrop-filter: blur(3px);
+    z-index: 300;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(520px, 100vw);
+    background: var(--bg);
+    z-index: 400;
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.32, 0, 0.15, 1);
+    display: flex; flex-direction: column;
+    box-shadow: -8px 0 40px rgba(14,165,233,0.12);
+    overflow: hidden;
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .drawer-title {
     font-family: 'Syne', sans-serif;
-    font-size: 13px; font-weight: 700; color: #fff;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(14,165,233,0.3);
+    font-size: 18px; font-weight: 800; color: var(--text);
+  }
+  .drawer-close {
+    width: 32px; height: 32px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; color: var(--text-muted);
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .drawer-close:hover { background: var(--border); color: var(--text); }
+  .drawer-body {
+    flex: 1; overflow-y: auto; padding: 24px;
+  }
+  .drawer-body::-webkit-scrollbar { width: 4px; }
+  .drawer-body::-webkit-scrollbar-track { background: transparent; }
+  .drawer-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ─── BOTTOM TAB BAR (mobile) ─── */
+  .bottom-tabs {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    box-shadow: 0 -4px 16px rgba(14,165,233,0.08);
+  }
+  .bottom-tabs-inner {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  .tab-btn {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; padding: 6px 4px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-dim); transition: color 0.2s;
+    font-family: 'DM Mono', monospace; font-size: 10px;
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .tab-btn.add-btn {
+    color: #fff;
+  }
+  .tab-btn.add-btn .tab-icon-wrap {
+    width: 44px; height: 44px; margin-top: -14px;
+    background: var(--accent); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(14,165,233,0.4);
+  }
+
+  @media (max-width: 640px) {
+    .bottom-tabs { display: block; }
+    .nav-right .nav-btn { display: none; }
+    .main { padding: 16px 16px 80px; }
+    .drawer { width: 100vw; }
   }
 
   /* ─── MAIN CONTENT ─── */
@@ -973,20 +1036,200 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- SHARED NAV + DRAWER OVERLAY                                   -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<!-- Single top nav used by the app (shown when logged in) -->
+<nav class="topnav" id="app-nav" style="display:none;">
+  <div class="topnav-logo"><div class="dot"></div> RideLog</div>
+  <div class="nav-right">
+    <button class="nav-btn" onclick="openDrawer('records')">Records</button>
+    <button class="nav-btn cta" onclick="openDrawer('entry')">+ Add Entry</button>
+    <div class="avatar" id="nav-avatar" onclick="openDrawer('profile')">?</div>
+  </div>
+</nav>
+
+<!-- Drawer backdrop -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<!-- ── DRAWER: ADD ENTRY ── -->
+<div class="drawer" id="drawer-entry">
+  <div class="drawer-header">
+    <div class="drawer-title">New Entry</div>
+    <div class="drawer-close" onclick="closeDrawer()">✕</div>
+  </div>
+  <div class="drawer-body">
+    <div class="steps-bar" id="steps-bar">
+      <div class="step-pill active" id="spill-1"></div>
+      <div class="step-pill" id="spill-2"></div>
+      <div class="step-pill" id="spill-3"></div>
+      <div class="step-pill" id="spill-4"></div>
+    </div>
+
+    <!-- Step 1: FY, Quarter & Month -->
+    <div class="entry-step active" id="step-1">
+      <div class="entry-label">Step 1 of 4 — Select Period</div>
+      <div class="entry-label" style="margin-top:12px;">Financial Year</div>
+      <div style="margin-bottom:14px;">
+        <select id="entry-fy-select" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)"></select>
+      </div>
+      <div class="entry-label">Quarter</div>
+      <div class="choice-grid" id="quarter-choices"></div>
+      <div class="entry-label" id="month-label" style="display:none;">Month</div>
+      <div class="month-tabs" id="month-tabs"></div>
+      <button class="btn btn-primary btn-full" id="step1-next" onclick="goStep(2)" disabled>Next →</button>
+    </div>
+
+    <!-- Step 2: Income or Expense -->
+    <div class="entry-step" id="step-2">
+      <div class="entry-label">Step 2 of 4 — Entry Type</div>
+      <div class="choice-grid">
+        <div class="choice-btn income" onclick="selectType('income',this)">📈 Income</div>
+        <div class="choice-btn expense" onclick="selectType('expense',this)">📉 Expense</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
+        <button class="btn btn-primary" id="step2-next" onclick="goStep(3)" disabled>Next →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Platform + Category -->
+    <div class="entry-step" id="step-3">
+      <div class="entry-label">Step 3 of 4 — Platform & Category</div>
+      <div class="entry-label" style="margin-top:12px;">Platform</div>
+      <div class="choice-grid">
+        <div class="choice-btn uber" onclick="selectPlatform('uber',this)">🟢 Uber</div>
+        <div class="choice-btn didi" onclick="selectPlatform('didi',this)">🟠 DiDi</div>
+        <div class="choice-btn other" onclick="selectPlatform('other',this)">🔵 Other</div>
+      </div>
+      <div class="entry-label">Category</div>
+      <div class="select-wrap">
+        <select id="category-select"><option value="">Select platform first…</option></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
+        <button class="btn btn-primary" id="step3-next" onclick="goStep(4)" disabled>Next →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Amount -->
+    <div class="entry-step" id="step-4">
+      <div class="entry-label">Step 4 of 4 — Amount & Notes</div>
+      <div class="form-group">
+        <label class="form-label">Amount (AUD, incl. GST)</label>
+        <div class="amount-wrap">
+          <span class="dollar">$</span>
+          <input class="input-field" id="amount-input" type="number" step="0.01" min="0" placeholder="0.00" oninput="validateAmount()" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes (optional)</label>
+        <input class="input-field" id="notes-input" placeholder="e.g. Airport run, peak hour…" />
+      </div>
+      <div class="gst-panel" id="preview-panel" style="margin-bottom:20px;display:none;">
+        <div class="gst-panel-header"><h3>GST Preview</h3></div>
+        <div class="gst-row"><span class="key">Amount entered</span><span class="val" id="prev-amount">$0.00</span></div>
+        <div class="gst-row"><span class="key">GST component (÷11)</span><span class="val" id="prev-gst">$0.00</span></div>
+        <div class="gst-row"><span class="key">Ex-GST amount</span><span class="val" id="prev-ex">$0.00</span></div>
+        <div class="gst-row" id="prev-biz-row" style="display:none;"><span class="key">Business use %</span><span class="val" id="prev-biz">100%</span></div>
+        <div class="gst-row" id="prev-claim-row" style="display:none;"><span class="key">GST claimable</span><span class="val" id="prev-claim">$0.00</span></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep(3)">← Back</button>
+        <button class="btn btn-primary" id="save-btn" onclick="saveEntry()" disabled>💾 Save Entry</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DRAWER: RECORDS ── -->
+<div class="drawer" id="drawer-records">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title">Records</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" id="records-count">0 entries</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select id="records-fy-select" class="fy-select" onchange="onRecordsFYChange(this.value)"></select>
+      <div class="drawer-close" onclick="closeDrawer()">✕</div>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <div class="filter-row" id="filter-row">
+      <div class="filter-chip active" onclick="filterRecords('all',this)">All</div>
+      <div class="filter-chip" onclick="filterRecords('income',this)">Income</div>
+      <div class="filter-chip" onclick="filterRecords('expense',this)">Expenses</div>
+      <div class="filter-chip" onclick="filterRecords('uber',this)">Uber</div>
+      <div class="filter-chip" onclick="filterRecords('didi',this)">DiDi</div>
+      <div class="filter-chip" onclick="filterRecords('other',this)">Other</div>
+    </div>
+
+    <div class="records-section">
+      <div class="records-header">
+        <h3>Entries</h3>
+        <span style="font-size:11px;color:var(--text-muted);">newest first</span>
+      </div>
+      <div id="records-list"></div>
+    </div>
+
+    <div class="gst-panel" style="margin-top:20px;" id="records-gst-summary">
+      <div class="gst-panel-header"><h3>GST Summary</h3></div>
+      <div class="gst-row"><span class="key">GST on Income (collected)</span><span class="val green" id="rec-gst-income">$0.00</span></div>
+      <div class="gst-row"><span class="key">GST on Expenses (claimable)</span><span class="val orange" id="rec-gst-exp">$0.00</span></div>
+      <div class="gst-row total" id="rec-bas-row">
+        <span class="key">Net BAS Position</span>
+        <span class="val" id="rec-gst-net">$0.00</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DRAWER: PROFILE ── -->
+<div class="drawer" id="drawer-profile">
+  <div class="drawer-header">
+    <div class="drawer-title">Profile & Settings</div>
+    <div class="drawer-close" onclick="closeDrawer()">✕</div>
+  </div>
+  <div class="drawer-body">
+    <div class="profile-card" style="margin-bottom:16px;">
+      <div class="profile-header">
+        <div class="avatar-lg" id="profile-avatar-lg">?</div>
+        <div class="profile-info">
+          <h2 id="profile-name">Loading…</h2>
+          <p id="profile-email">–</p>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ABN</label>
+        <input class="input-field" id="profile-abn" placeholder="XX XXX XXX XXX" maxlength="14" />
+        <div class="form-hint">Your Australian Business Number (11 digits)</div>
+      </div>
+      <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:4px;">Save Changes</button>
+    </div>
+
+    <div class="profile-card" style="margin-bottom:16px;">
+      <div class="section-title" style="font-size:16px;margin-bottom:6px;">Business Use Percentages</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Set per quarter — applies to vehicle, phone and internet expenses.</p>
+      <div id="pct-quarters-container"></div>
+      <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:8px;">Save All Percentages</button>
+    </div>
+
+    <div class="profile-card" style="border-color:rgba(255,71,87,0.15);">
+      <div class="section-title" style="font-size:16px;margin-bottom:6px;">Account</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">RideLog is free to use, supported by ads.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-danger" onclick="signOut()">Sign Out</button>
+        <button class="btn btn-secondary" onclick="if(confirm('Clear saved Firebase config?')){localStorage.removeItem('ridelog_fb');location.reload();}" style="font-size:12px;">Reset Config</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════ -->
 <!-- SCREEN: DASHBOARD                              -->
 <!-- ══════════════════════════════════════════════ -->
 <div id="screen-dashboard" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn active" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn" onclick="showScreen('entry')">+ Add Entry</button>
-      <button class="nav-btn" onclick="showScreen('records')">Records</button>
-      <button class="nav-btn" onclick="showScreen('profile')">Profile</button>
-      <div class="avatar" id="nav-avatar" onclick="showScreen('profile')">?</div>
-    </div>
-  </nav>
   <div class="main">
     <div class="fade-up">
       <div class="section-header">
@@ -995,22 +1238,9 @@
           <div class="section-subtitle" id="dash-greeting">Good morning</div>
         </div>
         <div class="fy-selector-wrap">
-          <select id="fy-select" onchange="onFYChange(this.value)" class="fy-select">
-          </select>
+          <select id="fy-select" onchange="onFYChange(this.value)" class="fy-select"></select>
         </div>
       </div>
-
-      <!-- ── AD UNIT — uncomment and replace IDs after AdSense approval ──
-      <div class="ad-unit ad-unit-banner">
-        <ins class="adsbygoogle"
-          style="display:block;width:100%;height:90px;"
-          data-ad-client="ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
-          data-ad-slot="YOUR_AD_SLOT_ID"
-          data-ad-format="horizontal"
-          data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-      </div>
-      ──────────────────────────────────────────────────────────────────── -->
 
       <div class="fy-label" id="fy-label">FY 2024–25</div>
 
@@ -1035,252 +1265,38 @@
       <div class="section-header fade-up delay-2">
         <div>
           <div class="section-title" style="font-size:16px;">Quarters</div>
-          <div class="section-subtitle">Click a quarter to add entries or view details</div>
+          <div class="section-subtitle">Tap a quarter to add entries</div>
         </div>
       </div>
-
-      <!-- ── AD UNIT — uncomment and replace IDs after AdSense approval ──
-      <div class="ad-unit ad-unit-inline">
-        <ins class="adsbygoogle"
-          style="display:block;width:100%;height:280px;"
-          data-ad-client="ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
-          data-ad-slot="YOUR_AD_SLOT_ID_2"
-          data-ad-format="rectangle"
-          data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-      </div>
-      ──────────────────────────────────────────────────────────────────── -->
-
       <div class="quarters-grid" id="quarters-grid"></div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: ENTRY                                  -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-entry" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn active">+ Add Entry</button>
-      <button class="nav-btn" onclick="showScreen('records')">Records</button>
-      <button class="nav-btn" onclick="showScreen('profile')">Profile</button>
-      <div class="avatar" id="nav-avatar-entry" onclick="showScreen('profile')">?</div>
-    </div>
-  </nav>
-  <div class="main">
-    <div class="section-header fade-up">
-      <div>
-        <div class="section-title">New Entry</div>
-        <div class="section-subtitle">Log income or an expense</div>
+<!-- ── BOTTOM TAB BAR (mobile) ── -->
+<div class="bottom-tabs" id="bottom-tabs" style="display:none;">
+  <div class="bottom-tabs-inner">
+    <button class="tab-btn active" id="tab-dash" onclick="closDrawerShowDash()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="tab-btn" id="tab-records" onclick="openDrawer('records')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+      Records
+    </button>
+    <button class="tab-btn add-btn" onclick="openDrawer('entry')">
+      <div class="tab-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </div>
-      <button class="btn btn-secondary" onclick="showScreen('dashboard')" style="font-size:12px;padding:8px 14px;">← Back</button>
-    </div>
-
-    <div class="steps-bar" id="steps-bar">
-      <div class="step-pill active" id="spill-1"></div>
-      <div class="step-pill" id="spill-2"></div>
-      <div class="step-pill" id="spill-3"></div>
-      <div class="step-pill" id="spill-4"></div>
-    </div>
-
-    <!-- Step 1: Quarter & Month -->
-    <div class="entry-step active fade-up" id="step-1">
-      <div class="entry-label">Step 1 of 4 — Select Period</div>
-      <div class="entry-label" style="margin-top:16px;">Financial Year</div>
-      <div style="margin-bottom:16px;">
-        <select id="entry-fy-select" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)">
-        </select>
-      </div>
-      <div class="entry-label">Quarter</div>
-      <div class="choice-grid" id="quarter-choices"></div>
-      <div class="entry-label" id="month-label" style="display:none;">Month</div>
-      <div class="month-tabs" id="month-tabs"></div>
-      <button class="btn btn-primary" id="step1-next" onclick="goStep(2)" disabled>Next →</button>
-    </div>
-
-    <!-- Step 2: Income or Expense -->
-    <div class="entry-step" id="step-2">
-      <div class="entry-label">Step 2 of 4 — Entry Type</div>
-      <div class="choice-grid">
-        <div class="choice-btn income" onclick="selectType('income',this)">📈 Income</div>
-        <div class="choice-btn expense" onclick="selectType('expense',this)">📉 Expense</div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
-        <button class="btn btn-primary" id="step2-next" onclick="goStep(3)" disabled>Next →</button>
-      </div>
-    </div>
-
-    <!-- Step 3: Platform + Category -->
-    <div class="entry-step" id="step-3">
-      <div class="entry-label">Step 3 of 4 — Platform & Category</div>
-      <div class="entry-label" style="margin-top:16px;">Platform</div>
-      <div class="choice-grid">
-        <div class="choice-btn uber" onclick="selectPlatform('uber',this)">🟢 Uber</div>
-        <div class="choice-btn didi" onclick="selectPlatform('didi',this)">🟠 DiDi</div>
-        <div class="choice-btn other" onclick="selectPlatform('other',this)">🔵 Other</div>
-      </div>
-      <div class="entry-label">Category</div>
-      <div class="select-wrap">
-        <select id="category-select">
-          <option value="">Select platform first…</option>
-        </select>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
-        <button class="btn btn-primary" id="step3-next" onclick="goStep(4)" disabled>Next →</button>
-      </div>
-    </div>
-
-    <!-- Step 4: Amount & Save -->
-    <div class="entry-step" id="step-4">
-      <div class="entry-label">Step 4 of 4 — Amount & Notes</div>
-      <div class="form-group">
-        <label class="form-label">Amount (AUD, incl. GST)</label>
-        <div class="amount-wrap">
-          <span class="dollar">$</span>
-          <input class="input-field" id="amount-input" type="number" step="0.01" min="0" placeholder="0.00" oninput="validateAmount()" />
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notes (optional)</label>
-        <input class="input-field" id="notes-input" placeholder="e.g. Airport run, peak hour…" />
-      </div>
-      <div class="gst-panel" id="preview-panel" style="margin-bottom:20px; display:none;">
-        <div class="gst-panel-header"><h3>GST Preview</h3></div>
-        <div class="gst-row"><span class="key">Amount entered</span><span class="val" id="prev-amount">$0.00</span></div>
-        <div class="gst-row"><span class="key">GST component (÷11)</span><span class="val" id="prev-gst">$0.00</span></div>
-        <div class="gst-row"><span class="key">Ex-GST amount</span><span class="val" id="prev-ex">$0.00</span></div>
-        <div class="gst-row" id="prev-biz-row" style="display:none;"><span class="key">Business use %</span><span class="val" id="prev-biz">100%</span></div>
-        <div class="gst-row" id="prev-claim-row" style="display:none;"><span class="key">GST claimable</span><span class="val" id="prev-claim">$0.00</span></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(3)">← Back</button>
-        <button class="btn btn-primary" id="save-btn" onclick="saveEntry()" disabled>💾 Save to Profile</button>
-      </div>
-    </div>
+      Add
+    </button>
+    <button class="tab-btn" id="tab-profile" onclick="openDrawer('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Profile
+    </button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: RECORDS                               -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-records" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn" onclick="showScreen('entry')">+ Add Entry</button>
-      <button class="nav-btn active">Records</button>
-      <button class="nav-btn" onclick="showScreen('profile')">Profile</button>
-      <div class="avatar" id="nav-avatar-records" onclick="showScreen('profile')">?</div>
-    </div>
-  </nav>
-  <div class="main">
-    <div class="section-header fade-up">
-      <div>
-        <div class="section-title">All Records</div>
-        <div class="section-subtitle" id="records-count">0 entries</div>
-      </div>
-      <div class="fy-selector-wrap">
-        <select id="records-fy-select" class="fy-select" onchange="onRecordsFYChange(this.value)">
-        </select>
-      </div>
-    </div>
-
-    <div class="filter-row fade-up delay-1" id="filter-row">
-      <div class="filter-chip active" onclick="filterRecords('all',this)">All</div>
-      <div class="filter-chip" onclick="filterRecords('income',this)">Income</div>
-      <div class="filter-chip" onclick="filterRecords('expense',this)">Expenses</div>
-      <div class="filter-chip" onclick="filterRecords('uber',this)">Uber</div>
-      <div class="filter-chip" onclick="filterRecords('didi',this)">DiDi</div>
-      <div class="filter-chip" onclick="filterRecords('other',this)">Other</div>
-    </div>
-
-    <div class="records-section fade-up delay-2">
-      <div class="records-header">
-        <h3>Entries</h3>
-        <span style="font-size:11px;color:var(--text-muted);">sorted by most recent</span>
-      </div>
-      <div style="padding:0 20px 6px; display:grid; grid-template-columns:80px 1fr 1fr 90px 90px 40px; gap:12px; font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">
-        <span>TYPE</span><span>PLATFORM / CAT</span><span class="col-month">PERIOD</span><span>AMOUNT</span><span>GST</span><span></span>
-      </div>
-      <div id="records-list"></div>
-    </div>
-
-    <div class="gst-panel fade-up delay-3" style="margin-top:28px;" id="records-gst-summary">
-      <div class="gst-panel-header"><h3>GST Summary (Filtered)</h3></div>
-      <div class="gst-row"><span class="key">GST on Income (collected)</span><span class="val green" id="rec-gst-income">$0.00</span></div>
-      <div class="gst-row"><span class="key">GST on Expenses (claimable)</span><span class="val orange" id="rec-gst-exp">$0.00</span></div>
-      <div class="gst-row total" id="rec-bas-row">
-        <span class="key">Net BAS Position</span>
-        <span class="val" id="rec-gst-net">$0.00</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════ -->
-<!-- SCREEN: PROFILE                               -->
-<!-- ══════════════════════════════════════════════ -->
-<div id="screen-profile" class="screen">
-  <nav class="topnav">
-    <div class="topnav-logo"><div class="dot"></div> RideLog</div>
-    <div class="nav-right">
-      <button class="nav-btn" onclick="showScreen('dashboard')">Dashboard</button>
-      <button class="nav-btn" onclick="showScreen('entry')">+ Add Entry</button>
-      <button class="nav-btn" onclick="showScreen('records')">Records</button>
-      <button class="nav-btn active">Profile</button>
-      <div class="avatar" id="nav-avatar-profile" onclick="showScreen('profile')">?</div>
-    </div>
-  </nav>
-  <div class="main">
-    <div class="section-header fade-up">
-      <div class="section-title">Profile & Settings</div>
-    </div>
-
-    <div class="profile-card fade-up delay-1">
-      <div class="profile-header">
-        <div class="avatar-lg" id="profile-avatar-lg">?</div>
-        <div class="profile-info">
-          <h2 id="profile-name">Loading…</h2>
-          <p id="profile-email">–</p>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">ABN</label>
-        <input class="input-field" id="profile-abn" placeholder="XX XXX XXX XXX" maxlength="14" />
-        <div class="form-hint">Your Australian Business Number (11 digits)</div>
-      </div>
-
-      <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:4px;">Save Changes</button>
-    </div>
-
-    <div class="profile-card fade-up delay-2">
-      <div class="section-title" style="font-size:16px;margin-bottom:6px;">Business Use Percentages</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px;">
-        Set percentages <strong>per quarter</strong> — they may differ if your driving intensity varied across the year. These apply to Common Business Expenses when calculating GST credits.
-      </p>
-
-      <div id="pct-quarters-container"></div>
-
-      <button class="btn btn-primary" onclick="saveProfile()" style="margin-top:8px;">Save All Percentages</button>
-    </div>
-
-    <div class="profile-card fade-up delay-3" style="border-color:rgba(255,71,87,0.15);">
-      <div class="section-title" style="font-size:16px;margin-bottom:6px;">Account</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">RideLog is free to use, supported by ads.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-danger" onclick="signOut()">Sign Out</button>
-        <button class="btn btn-secondary" onclick="if(confirm('Clear saved Firebase config?')){localStorage.removeItem('ridelog_fb');location.reload();}" style="font-size:12px;">Reset Firebase Config</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ─────────────────────────────────── -->
 <!-- FIREBASE + APP LOGIC               -->
@@ -1503,14 +1519,64 @@ function buildRecordsFYSelector() {
   ).join('');
 }
 
-window.showScreen = (id) => {
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-'+id).classList.add('active');
-  if (id==='dashboard') renderDashboard();
-  if (id==='records')   { buildRecordsFYSelector(); renderRecords(); }
-  if (id==='profile')   renderProfile();
-  if (id==='entry')     resetEntry();
+// ─── DRAWER SYSTEM ────────────────────────────────────────────────
+let currentDrawer = null;
+
+window.openDrawer = (name) => {
+  // Close existing without waiting
+  if (currentDrawer && currentDrawer !== name) {
+    document.getElementById('drawer-' + currentDrawer).classList.remove('open');
+  }
+  currentDrawer = name;
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('drawer-' + name).classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Mobile tab state
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tabEl = document.getElementById('tab-' + name);
+  if (tabEl) tabEl.classList.add('active');
+  // Render content
+  if (name === 'entry')   resetEntry();
+  if (name === 'records') { buildRecordsFYSelector(); renderRecords(); }
+  if (name === 'profile') renderProfile();
 };
+
+window.closeDrawer = () => {
+  if (!currentDrawer) return;
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.getElementById('drawer-' + currentDrawer).classList.remove('open');
+  document.body.style.overflow = '';
+  currentDrawer = null;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const dashTab = document.getElementById('tab-dash');
+  if (dashTab) dashTab.classList.add('active');
+};
+
+window.closDrawerShowDash = () => {
+  closeDrawer();
+};
+
+// showScreen handles login/setup/dashboard only now
+window.showScreen = (id) => {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = document.getElementById('screen-' + id);
+  if (screen) screen.classList.add('active');
+  const nav   = document.getElementById('app-nav');
+  const btabs = document.getElementById('bottom-tabs');
+  if (id === 'dashboard') {
+    if (nav)   nav.style.display   = 'flex';
+    if (btabs) btabs.style.display = 'block';
+    renderDashboard();
+  } else {
+    if (nav)   nav.style.display   = 'none';
+    if (btabs) btabs.style.display = 'none';
+  }
+};
+
+// Escape key closes drawer
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDrawer();
+});
 
 // ─── SCREENS INIT ─────────────────────────────────────────────────
 function initQuarterChoices() {
@@ -1680,14 +1746,11 @@ function renderDashboard() {
 
 // Clicking a quarter card pre-selects that quarter and FY in the entry form
 window.selectEntryQuarter = (qid) => {
-  showScreen('entry');
-  // Pre-select the quarter after the entry screen resets
+  openDrawer('entry');
   setTimeout(() => {
     const btns = document.querySelectorAll('#quarter-choices .choice-btn');
-    btns.forEach(b => {
-      if (b.textContent.includes(qid)) b.click();
-    });
-  }, 50);
+    btns.forEach(b => { if (b.textContent.includes(qid)) b.click(); });
+  }, 80);
 };
 
 // ─── RECORDS ──────────────────────────────────────────────────────
@@ -1865,7 +1928,8 @@ window.saveEntry = async () => {
     entry.id = ref.id;
     appEntries.push(entry);
     showToast('Entry saved!');
-    showScreen('dashboard');
+    closeDrawer();
+    renderDashboard();
   } catch(e){ showToast('Error: '+e.message,'error'); }
 };
 
@@ -2035,6 +2099,9 @@ function initFirebase() {
       await auth.signOut();
       appEntries = []; appProfile = { abn:'', quarterPcts: defaultQuarterPcts() };
       currentUser = null;
+      closeDrawer();
+      document.getElementById('app-nav').style.display = 'none';
+      document.getElementById('bottom-tabs').style.display = 'none';
       showScreen('login');
     };
 
@@ -2080,15 +2147,14 @@ function initFirebase() {
 }
 
 function updateAvatars(user) {
-  // Use displayName if available, else first letter of email
   const name = user.displayName || user.email || '?';
   const initials = name.includes(' ')
     ? name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
     : name.slice(0,2).toUpperCase();
-  ['','entry','records','profile'].forEach(s=>{
-    const el = document.getElementById('nav-avatar'+(s?'-'+s:''));
-    if(el) el.textContent = initials;
-  });
+  const el = document.getElementById('nav-avatar');
+  if (el) el.textContent = initials;
+  const profileEl = document.getElementById('profile-avatar-lg');
+  if (profileEl) profileEl.textContent = initials;
 }
 
 // ─── AUTH TAB SWITCHER ───────────────────────────────────────────
