@@ -838,6 +838,66 @@
   .fy-select:focus { outline: none; border-color: var(--accent); }
   .fy-select option { background: var(--surface); color: var(--text); font-family: 'DM Mono', monospace; }
 
+  /* ─── BULK ENTRY TABLE ─── */
+  .bulk-table-wrap {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .bulk-table-header {
+    display: grid;
+    grid-template-columns: 80px 90px 1fr 90px 1fr 32px;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+  }
+  .bulk-row {
+    display: grid;
+    grid-template-columns: 80px 90px 1fr 90px 1fr 32px;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .bulk-row:last-child { border-bottom: none; }
+  .bulk-row select,
+  .bulk-row input {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+  .bulk-row select:focus,
+  .bulk-row input:focus { outline: none; border-color: var(--accent); }
+  .bulk-row input[type=number] { text-align: right; }
+  .bulk-del {
+    background: none; border: none;
+    color: var(--text-dim); cursor: pointer;
+    font-size: 14px; padding: 4px;
+    transition: color 0.2s; text-align: center;
+  }
+  .bulk-del:hover { color: var(--danger); }
+  .bulk-row.income-row { border-left: 3px solid #16a34a; }
+  .bulk-row.expense-row { border-left: 3px solid var(--accent2); }
+
+  @media (max-width: 520px) {
+    .bulk-table-header { grid-template-columns: 70px 80px 1fr 80px 32px; }
+    .bulk-table-header span:nth-child(5) { display: none; }
+    .bulk-row { grid-template-columns: 70px 80px 1fr 80px 32px; }
+    .bulk-row input[placeholder*="Notes"] { display: none; }
+  }
+
   /* ─── AUTH DIVIDER ─── */
   .auth-divider {
     display: flex; align-items: center; gap: 12px;
@@ -1056,90 +1116,172 @@
 <!-- ── DRAWER: ADD ENTRY ── -->
 <div class="drawer" id="drawer-entry">
   <div class="drawer-header">
-    <div class="drawer-title">New Entry</div>
+    <div>
+      <div class="drawer-title">Add Entry</div>
+      <!-- Mode tabs -->
+      <div style="display:flex;gap:4px;margin-top:8px;">
+        <button id="mode-single-btn" onclick="switchEntryMode('single')" style="padding:4px 14px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">Single</button>
+        <button id="mode-bulk-btn"   onclick="switchEntryMode('bulk')"   style="padding:4px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;">Bulk</button>
+      </div>
+    </div>
     <div class="drawer-close" onclick="closeDrawer()">✕</div>
   </div>
+
   <div class="drawer-body">
-    <div class="steps-bar" id="steps-bar">
-      <div class="step-pill active" id="spill-1"></div>
-      <div class="step-pill" id="spill-2"></div>
-      <div class="step-pill" id="spill-3"></div>
-      <div class="step-pill" id="spill-4"></div>
-    </div>
 
-    <!-- Step 1: FY, Quarter & Month -->
-    <div class="entry-step active" id="step-1">
-      <div class="entry-label">Step 1 of 4 — Select Period</div>
-      <div class="entry-label" style="margin-top:12px;">Financial Year</div>
-      <div style="margin-bottom:14px;">
-        <select id="entry-fy-select" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)"></select>
+    <!-- ══ SINGLE ENTRY MODE ══ -->
+    <div id="mode-single">
+      <div class="steps-bar" id="steps-bar">
+        <div class="step-pill active" id="spill-1"></div>
+        <div class="step-pill" id="spill-2"></div>
+        <div class="step-pill" id="spill-3"></div>
+        <div class="step-pill" id="spill-4"></div>
       </div>
-      <div class="entry-label">Quarter</div>
-      <div class="choice-grid" id="quarter-choices"></div>
-      <div class="entry-label" id="month-label" style="display:none;">Month</div>
-      <div class="month-tabs" id="month-tabs"></div>
-      <button class="btn btn-primary btn-full" id="step1-next" onclick="goStep(2)" disabled>Next →</button>
-    </div>
 
-    <!-- Step 2: Income or Expense -->
-    <div class="entry-step" id="step-2">
-      <div class="entry-label">Step 2 of 4 — Entry Type</div>
-      <div class="choice-grid">
-        <div class="choice-btn income" onclick="selectType('income',this)">📈 Income</div>
-        <div class="choice-btn expense" onclick="selectType('expense',this)">📉 Expense</div>
+      <div class="entry-step active" id="step-1">
+        <div class="entry-label">Step 1 of 4 — Select Period</div>
+        <div class="entry-label" style="margin-top:12px;">Financial Year</div>
+        <div style="margin-bottom:14px;">
+          <select id="entry-fy-select" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)"></select>
+        </div>
+        <div class="entry-label">Quarter</div>
+        <div class="choice-grid" id="quarter-choices"></div>
+        <div class="entry-label" id="month-label" style="display:none;">Month</div>
+        <div class="month-tabs" id="month-tabs"></div>
+        <button class="btn btn-primary btn-full" id="step1-next" onclick="goStep(2)" disabled>Next →</button>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
-        <button class="btn btn-primary" id="step2-next" onclick="goStep(3)" disabled>Next →</button>
-      </div>
-    </div>
 
-    <!-- Step 3: Platform + Category -->
-    <div class="entry-step" id="step-3">
-      <div class="entry-label">Step 3 of 4 — Platform & Category</div>
-      <div class="entry-label" style="margin-top:12px;">Platform</div>
-      <div class="choice-grid">
-        <div class="choice-btn uber" onclick="selectPlatform('uber',this)">🟢 Uber</div>
-        <div class="choice-btn didi" onclick="selectPlatform('didi',this)">🟠 DiDi</div>
-        <div class="choice-btn other" onclick="selectPlatform('other',this)">🔵 Other</div>
-      </div>
-      <div class="entry-label">Category</div>
-      <div class="select-wrap">
-        <select id="category-select"><option value="">Select platform first…</option></select>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
-        <button class="btn btn-primary" id="step3-next" onclick="goStep(4)" disabled>Next →</button>
-      </div>
-    </div>
-
-    <!-- Step 4: Amount -->
-    <div class="entry-step" id="step-4">
-      <div class="entry-label">Step 4 of 4 — Amount & Notes</div>
-      <div class="form-group">
-        <label class="form-label">Amount (AUD, incl. GST)</label>
-        <div class="amount-wrap">
-          <span class="dollar">$</span>
-          <input class="input-field" id="amount-input" type="number" step="0.01" min="0" placeholder="0.00" oninput="validateAmount()" />
+      <div class="entry-step" id="step-2">
+        <div class="entry-label">Step 2 of 4 — Entry Type</div>
+        <div class="choice-grid">
+          <div class="choice-btn income" onclick="selectType('income',this)">📈 Income</div>
+          <div class="choice-btn expense" onclick="selectType('expense',this)">📉 Expense</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
+          <button class="btn btn-primary" id="step2-next" onclick="goStep(3)" disabled>Next →</button>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Notes (optional)</label>
-        <input class="input-field" id="notes-input" placeholder="e.g. Airport run, peak hour…" />
+
+      <div class="entry-step" id="step-3">
+        <div class="entry-label">Step 3 of 4 — Platform & Category</div>
+        <div class="entry-label" style="margin-top:12px;">Platform</div>
+        <div class="choice-grid">
+          <div class="choice-btn uber" onclick="selectPlatform('uber',this)">🟢 Uber</div>
+          <div class="choice-btn didi" onclick="selectPlatform('didi',this)">🟠 DiDi</div>
+          <div class="choice-btn other" onclick="selectPlatform('other',this)">🔵 Other</div>
+        </div>
+        <div class="entry-label">Category</div>
+        <div class="select-wrap">
+          <select id="category-select"><option value="">Select platform first…</option></select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
+          <button class="btn btn-primary" id="step3-next" onclick="goStep(4)" disabled>Next →</button>
+        </div>
       </div>
-      <div class="gst-panel" id="preview-panel" style="margin-bottom:20px;display:none;">
-        <div class="gst-panel-header"><h3>GST Preview</h3></div>
-        <div class="gst-row"><span class="key">Amount entered</span><span class="val" id="prev-amount">$0.00</span></div>
-        <div class="gst-row"><span class="key">GST component (÷11)</span><span class="val" id="prev-gst">$0.00</span></div>
-        <div class="gst-row"><span class="key">Ex-GST amount</span><span class="val" id="prev-ex">$0.00</span></div>
-        <div class="gst-row" id="prev-biz-row" style="display:none;"><span class="key">Business use %</span><span class="val" id="prev-biz">100%</span></div>
-        <div class="gst-row" id="prev-claim-row" style="display:none;"><span class="key">GST claimable</span><span class="val" id="prev-claim">$0.00</span></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="goStep(3)">← Back</button>
-        <button class="btn btn-primary" id="save-btn" onclick="saveEntry()" disabled>💾 Save Entry</button>
+
+      <div class="entry-step" id="step-4">
+        <div class="entry-label">Step 4 of 4 — Amount & Notes</div>
+        <div class="form-group">
+          <label class="form-label">Amount (AUD, incl. GST)</label>
+          <div class="amount-wrap">
+            <span class="dollar">$</span>
+            <input class="input-field" id="amount-input" type="number" step="0.01" min="0" placeholder="0.00" oninput="validateAmount()" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <input class="input-field" id="notes-input" placeholder="e.g. Airport run, peak hour…" />
+        </div>
+        <div class="gst-panel" id="preview-panel" style="margin-bottom:20px;display:none;">
+          <div class="gst-panel-header"><h3>GST Preview</h3></div>
+          <div class="gst-row"><span class="key">Amount entered</span><span class="val" id="prev-amount">$0.00</span></div>
+          <div class="gst-row"><span class="key">GST component (÷11)</span><span class="val" id="prev-gst">$0.00</span></div>
+          <div class="gst-row"><span class="key">Ex-GST amount</span><span class="val" id="prev-ex">$0.00</span></div>
+          <div class="gst-row" id="prev-biz-row" style="display:none;"><span class="key">Business use %</span><span class="val" id="prev-biz">100%</span></div>
+          <div class="gst-row" id="prev-claim-row" style="display:none;"><span class="key">GST claimable</span><span class="val" id="prev-claim">$0.00</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goStep(3)">← Back</button>
+          <button class="btn btn-primary" id="save-btn" onclick="saveEntry()" disabled>💾 Save Entry</button>
+        </div>
       </div>
     </div>
+
+    <!-- ══ BULK ENTRY MODE ══ -->
+    <div id="mode-bulk" style="display:none;">
+
+      <!-- Period selector for bulk -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;">
+        <div>
+          <div class="entry-label">Financial Year</div>
+          <select id="bulk-fy" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)"></select>
+        </div>
+        <div>
+          <div class="entry-label">Quarter</div>
+          <select id="bulk-quarter" class="fy-select" style="width:100%;border-radius:var(--radius);">
+            <option value="Q1">Q1 Jul–Sep</option>
+            <option value="Q2">Q2 Oct–Dec</option>
+            <option value="Q3">Q3 Jan–Mar</option>
+            <option value="Q4">Q4 Apr–Jun</option>
+          </select>
+        </div>
+        <div>
+          <div class="entry-label">Month</div>
+          <select id="bulk-month" class="fy-select" style="width:100%;border-radius:var(--radius);">
+            <option value="July">July</option>
+            <option value="August">August</option>
+            <option value="September">September</option>
+            <option value="October">October</option>
+            <option value="November">November</option>
+            <option value="December">December</option>
+            <option value="January">January</option>
+            <option value="February">February</option>
+            <option value="March">March</option>
+            <option value="April">April</option>
+            <option value="May">May</option>
+            <option value="June">June</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Bulk rows table -->
+      <div class="bulk-table-wrap">
+        <div class="bulk-table-header">
+          <span>Type</span>
+          <span>Platform</span>
+          <span>Category</span>
+          <span>Amount $</span>
+          <span>Notes</span>
+          <span></span>
+        </div>
+        <div id="bulk-rows"></div>
+      </div>
+
+      <button class="btn btn-secondary btn-full" onclick="addBulkRow()" style="margin-top:10px;border-style:dashed;">+ Add Row</button>
+
+      <!-- Bulk summary -->
+      <div id="bulk-summary" style="display:none;margin-top:16px;padding:14px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+          <span style="color:var(--text-muted);">Total Income</span>
+          <span style="color:#16a34a;font-family:'Syne',sans-serif;font-weight:700;" id="bulk-total-income">$0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+          <span style="color:var(--text-muted);">Total Expenses</span>
+          <span style="color:var(--accent2);font-family:'Syne',sans-serif;font-weight:700;" id="bulk-total-expense">$0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--border);">
+          <span style="color:var(--text-muted);">Rows</span>
+          <span style="font-family:'Syne',sans-serif;font-weight:700;" id="bulk-row-count">0</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="saveBulkEntries()" id="bulk-save-btn" style="margin-top:14px;" disabled>
+        💾 Save All Entries
+      </button>
+    </div>
+
   </div>
 </div>
 
@@ -1685,9 +1827,182 @@ function resetEntry() {
   document.getElementById('amount-input').value='';
   document.getElementById('notes-input').value='';
   document.getElementById('preview-panel').style.display='none';
+  // Reset mode to single
+  switchEntryMode('single');
   buildEntryFYSelector();
+  buildBulkFYSelector();
   initQuarterChoices();
+  // Reset bulk
+  document.getElementById('bulk-rows').innerHTML = '';
+  updateBulkSummary();
+  addBulkRow(); // start with one empty row
 }
+
+// ─── ENTRY MODE SWITCHER ──────────────────────────────────────────
+window.switchEntryMode = (mode) => {
+  const isSingle = mode === 'single';
+  document.getElementById('mode-single').style.display = isSingle ? 'block' : 'none';
+  document.getElementById('mode-bulk').style.display   = isSingle ? 'none'  : 'block';
+  const sBtn = document.getElementById('mode-single-btn');
+  const bBtn = document.getElementById('mode-bulk-btn');
+  if (sBtn) {
+    sBtn.style.background   = isSingle ? 'var(--accent)' : 'transparent';
+    sBtn.style.color        = isSingle ? '#fff' : 'var(--text-muted)';
+    sBtn.style.borderColor  = isSingle ? 'var(--accent)' : 'var(--border)';
+  }
+  if (bBtn) {
+    bBtn.style.background   = !isSingle ? 'var(--accent)' : 'transparent';
+    bBtn.style.color        = !isSingle ? '#fff' : 'var(--text-muted)';
+    bBtn.style.borderColor  = !isSingle ? 'var(--accent)' : 'var(--border)';
+  }
+};
+
+// ─── BULK ENTRY ───────────────────────────────────────────────────
+let bulkRowId = 0;
+
+function buildBulkFYSelector() {
+  const sel = document.getElementById('bulk-fy');
+  if (!sel) return;
+  const fys = getAvailableFYs();
+  sel.innerHTML = fys.map(fy =>
+    `<option value="${fy}" ${fy === selectedFY ? 'selected' : ''}>FY ${fyLabel(fy)}</option>`
+  ).join('');
+  sel.onchange = (e) => { selectedFY = parseInt(e.target.value); };
+}
+
+function getCatsForBulkRow(platform, type) {
+  return (CATEGORIES[platform]?.[type] || []);
+}
+
+window.addBulkRow = () => {
+  const id = ++bulkRowId;
+  const row = document.createElement('div');
+  row.className = 'bulk-row';
+  row.id = 'bulk-row-' + id;
+
+  // Build category options from uber/income as default
+  const catOpts = getCatsForBulkRow('uber','income')
+    .map(c => `<option value="${c}">${c}</option>`).join('');
+
+  row.innerHTML = `
+    <select class="bulk-type" onchange="onBulkTypeChange(${id},this)">
+      <option value="income">📈 Income</option>
+      <option value="expense">📉 Expense</option>
+    </select>
+    <select class="bulk-platform" onchange="onBulkPlatformChange(${id},this)">
+      <option value="uber">Uber</option>
+      <option value="didi">DiDi</option>
+      <option value="other">Other</option>
+    </select>
+    <select class="bulk-category" id="bulk-cat-${id}">
+      ${catOpts}
+    </select>
+    <input type="number" class="bulk-amount" placeholder="0.00" step="0.01" min="0"
+      oninput="updateBulkSummary()" />
+    <input type="text" class="bulk-notes" placeholder="Notes…" />
+    <button class="bulk-del" onclick="removeBulkRow(${id})">✕</button>
+  `;
+  row.classList.add('income-row');
+  document.getElementById('bulk-rows').appendChild(row);
+  updateBulkSummary();
+  // Focus the amount field of the new row
+  row.querySelector('.bulk-amount').focus();
+};
+
+window.removeBulkRow = (id) => {
+  const row = document.getElementById('bulk-row-' + id);
+  if (row) row.remove();
+  updateBulkSummary();
+};
+
+window.onBulkTypeChange = (id, sel) => {
+  const row = document.getElementById('bulk-row-' + id);
+  if (!row) return;
+  row.className = 'bulk-row ' + (sel.value === 'income' ? 'income-row' : 'expense-row');
+  const platform = row.querySelector('.bulk-platform').value;
+  refreshBulkCats(id, platform, sel.value);
+  updateBulkSummary();
+};
+
+window.onBulkPlatformChange = (id, sel) => {
+  const row = document.getElementById('bulk-row-' + id);
+  if (!row) return;
+  const type = row.querySelector('.bulk-type').value;
+  refreshBulkCats(id, sel.value, type);
+};
+
+function refreshBulkCats(id, platform, type) {
+  const catSel = document.getElementById('bulk-cat-' + id);
+  if (!catSel) return;
+  const cats = getCatsForBulkRow(platform, type);
+  catSel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function updateBulkSummary() {
+  const rows = document.querySelectorAll('#bulk-rows .bulk-row');
+  let totalInc = 0, totalExp = 0, validCount = 0;
+  rows.forEach(row => {
+    const amt = parseFloat(row.querySelector('.bulk-amount')?.value) || 0;
+    if (amt > 0) {
+      validCount++;
+      const type = row.querySelector('.bulk-type')?.value;
+      if (type === 'income') totalInc += amt;
+      else totalExp += amt;
+    }
+  });
+  const summaryEl = document.getElementById('bulk-summary');
+  const saveBtn   = document.getElementById('bulk-save-btn');
+  if (summaryEl) summaryEl.style.display = validCount > 0 ? 'block' : 'none';
+  if (saveBtn)   saveBtn.disabled = validCount === 0;
+  const incEl = document.getElementById('bulk-total-income');
+  const expEl = document.getElementById('bulk-total-expense');
+  const cntEl = document.getElementById('bulk-row-count');
+  if (incEl) incEl.textContent = fmt(totalInc);
+  if (expEl) expEl.textContent = fmt(totalExp);
+  if (cntEl) cntEl.textContent = validCount + ' valid row' + (validCount !== 1 ? 's' : '');
+}
+
+window.saveBulkEntries = async () => {
+  const fy      = parseInt(document.getElementById('bulk-fy').value) || selectedFY || getCurrentFY();
+  const quarter = document.getElementById('bulk-quarter').value;
+  const month   = document.getElementById('bulk-month').value;
+  const rows    = document.querySelectorAll('#bulk-rows .bulk-row');
+  const btn     = document.getElementById('bulk-save-btn');
+
+  const entries = [];
+  rows.forEach(row => {
+    const amount   = parseFloat(row.querySelector('.bulk-amount')?.value);
+    if (!amount || amount <= 0) return; // skip empty rows
+    const type     = row.querySelector('.bulk-type').value;
+    const platform = row.querySelector('.bulk-platform').value;
+    const category = row.querySelector('.bulk-category')?.value || '';
+    const notes    = row.querySelector('.bulk-notes')?.value || '';
+    const gst      = calcGST(amount, category, type, quarter);
+    entries.push({ fy, quarter, month, type, platform, category, amount, gst, notes, ts: Date.now() });
+  });
+
+  if (entries.length === 0) { showToast('No valid entries to save', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = `Saving ${entries.length} entries…`;
+
+  try {
+    const col = db.collection('users').doc(currentUser.uid).collection('entries');
+    // Save all in parallel
+    const saved = await Promise.all(entries.map(async e => {
+      const ref = await col.add(e);
+      return { id: ref.id, ...e };
+    }));
+    saved.forEach(e => appEntries.push(e));
+    showToast(`${saved.length} entries saved! ✓`, 'success');
+    closeDrawer();
+    renderDashboard();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '💾 Save All Entries';
+    showToast('Error: ' + e.message, 'error');
+  }
+};
 
 // ─── DASHBOARD ────────────────────────────────────────────────────
 function renderDashboard() {
@@ -1748,6 +2063,7 @@ function renderDashboard() {
 window.selectEntryQuarter = (qid) => {
   openDrawer('entry');
   setTimeout(() => {
+    switchEntryMode('single');
     const btns = document.querySelectorAll('#quarter-choices .choice-btn');
     btns.forEach(b => { if (b.textContent.includes(qid)) b.click(); });
   }, 80);
