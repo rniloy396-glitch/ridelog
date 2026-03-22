@@ -838,6 +838,78 @@
   .fy-select:focus { outline: none; border-color: var(--accent); }
   .fy-select option { background: var(--surface); color: var(--text); font-family: 'DM Mono', monospace; }
 
+  /* ─── AFFILIATE SECTION ─── */
+  .affiliate-section {
+    margin-top: 32px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+  }
+  .affiliate-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 6px;
+  }
+  .affiliate-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 700; color: var(--text);
+  }
+  .affiliate-note {
+    font-size: 10px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.8px;
+  }
+  .affiliate-grid {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .aff-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+  }
+  .aff-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+  .aff-card::before {
+    content: attr(data-badge);
+    position: absolute; top: 10px; right: 12px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 10px; font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    padding: 2px 8px; border-radius: 20px;
+    border: 1px solid rgba(14,165,233,0.2);
+    display: none;
+  }
+  .aff-card[data-badge]::before { display: block; }
+  .aff-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .aff-body { flex: 1; min-width: 0; }
+  .aff-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700;
+    color: var(--text); margin-bottom: 3px;
+  }
+  .aff-desc {
+    font-size: 12px; color: var(--text-muted);
+    line-height: 1.4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .aff-cta {
+    font-size: 12px; font-weight: 600;
+    font-family: 'Syne', sans-serif;
+    color: var(--accent); white-space: nowrap; flex-shrink: 0;
+  }
+
   /* ─── BULK ENTRY TABLE ─── */
   .bulk-table-wrap {
     border: 1.5px solid var(--border);
@@ -1411,6 +1483,57 @@
         </div>
       </div>
       <div class="quarters-grid" id="quarters-grid"></div>
+
+      <!-- ── AFFILIATE LINKS SECTION ── -->
+      <div class="affiliate-section fade-up delay-3">
+        <div class="affiliate-header">
+          <div class="affiliate-title">Recommended for drivers</div>
+          <div class="affiliate-note">Sponsored · We may earn a commission</div>
+        </div>
+        <div class="affiliate-grid" id="affiliate-grid">
+
+          <!-- ─────────────────────────────────────────────
+               AFFILIATE CARD TEMPLATE — duplicate to add more
+               Replace the following fields:
+                 href        → your affiliate/tracking link
+                 data-badge  → optional badge text e.g. "Popular" or "New"
+                 .aff-icon   → emoji or letter representing the product
+                 .aff-name   → product/service name
+                 .aff-desc   → one-line description (keep it short)
+                 .aff-cta    → call-to-action button label
+          ──────────────────────────────────────────────── -->
+
+          <a class="aff-card" href="YOUR_AFFILIATE_LINK_1" target="_blank" rel="noopener sponsored" data-badge="Popular">
+            <div class="aff-icon" style="background:#e0f2fe;color:#0c4a6e;">🚗</div>
+            <div class="aff-body">
+              <div class="aff-name">Car Insurance for Rideshare</div>
+              <div class="aff-desc">Cover designed for Uber & DiDi drivers. Get a free quote.</div>
+            </div>
+            <div class="aff-cta">View deal →</div>
+          </a>
+
+          <a class="aff-card" href="YOUR_AFFILIATE_LINK_2" target="_blank" rel="noopener sponsored">
+            <div class="aff-icon" style="background:#f0fdf4;color:#14532d;">⛽</div>
+            <div class="aff-body">
+              <div class="aff-name">Fuel Card for Drivers</div>
+              <div class="aff-desc">Save cents per litre at major Australian fuel stations.</div>
+            </div>
+            <div class="aff-cta">View deal →</div>
+          </a>
+
+          <a class="aff-card" href="YOUR_AFFILIATE_LINK_3" target="_blank" rel="noopener sponsored">
+            <div class="aff-icon" style="background:#fff4ec;color:#9a3412;">📱</div>
+            <div class="aff-body">
+              <div class="aff-name">Phone Mount & Accessories</div>
+              <div class="aff-desc">Top-rated mounts and dashcams for rideshare drivers.</div>
+            </div>
+            <div class="aff-cta">Shop now →</div>
+          </a>
+
+        </div>
+      </div>
+      <!-- ── END AFFILIATE SECTION ── -->
+
     </div>
   </div>
 </div>
