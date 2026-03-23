@@ -1154,36 +1154,25 @@
         <div class="step-pill active" id="spill-1"></div>
         <div class="step-pill" id="spill-2"></div>
         <div class="step-pill" id="spill-3"></div>
-        <div class="step-pill" id="spill-4"></div>
       </div>
 
       <div class="entry-step active" id="step-1">
-        <div class="entry-label">Step 1 of 4 — Select Period</div>
-        <div class="entry-label" style="margin-top:12px;">Financial Year</div>
-        <div style="margin-bottom:14px;">
-          <select id="entry-fy-select" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)"></select>
+        <div class="entry-label">Step 1 of 3 — Date & Type</div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label">Date of entry</label>
+          <input class="input-field" id="entry-date" type="date" style="margin-bottom:0;font-size:15px;" oninput="onEntryDateChange(this.value)" />
+          <div id="entry-date-derived" style="font-size:12px;color:var(--accent);margin-top:6px;font-family:'Syne',sans-serif;font-weight:600;min-height:18px;"></div>
         </div>
-        <div class="entry-label">Quarter</div>
-        <div class="choice-grid" id="quarter-choices"></div>
-        <div class="entry-label" id="month-label" style="display:none;">Month</div>
-        <div class="month-tabs" id="month-tabs"></div>
-        <button class="btn btn-primary btn-full" id="step1-next" onclick="goStep(2)" disabled>Next →</button>
-      </div>
-
-      <div class="entry-step" id="step-2">
-        <div class="entry-label">Step 2 of 4 — Entry Type</div>
-        <div class="choice-grid">
+        <div class="entry-label">Entry Type</div>
+        <div class="choice-grid" style="margin-bottom:0;">
           <div class="choice-btn income" onclick="selectType('income',this)">📈 Income</div>
           <div class="choice-btn expense" onclick="selectType('expense',this)">📉 Expense</div>
         </div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
-          <button class="btn btn-primary" id="step2-next" onclick="goStep(3)" disabled>Next →</button>
-        </div>
+        <button class="btn btn-primary btn-full" id="step1-next" onclick="goStep(2)" disabled style="margin-top:16px;">Next →</button>
       </div>
 
-      <div class="entry-step" id="step-3">
-        <div class="entry-label">Step 3 of 4 — Platform & Category</div>
+      <div class="entry-step" id="step-2">
+        <div class="entry-label">Step 2 of 3 — Platform & Category</div>
         <div class="entry-label" style="margin-top:12px;">Platform</div>
         <div class="choice-grid">
           <div class="choice-btn uber" onclick="selectPlatform('uber',this)">🟢 Uber</div>
@@ -1195,13 +1184,13 @@
           <select id="category-select"><option value="">Select platform first…</option></select>
         </div>
         <div class="btn-row">
-          <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
-          <button class="btn btn-primary" id="step3-next" onclick="goStep(4)" disabled>Next →</button>
+          <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
+          <button class="btn btn-primary" id="step2-next" onclick="goStep(3)" disabled>Next →</button>
         </div>
       </div>
 
-      <div class="entry-step" id="step-4">
-        <div class="entry-label">Step 4 of 4 — Amount & Notes</div>
+      <div class="entry-step" id="step-3">
+        <div class="entry-label">Step 3 of 3 — Amount & Notes</div>
         <div class="form-group">
           <label class="form-label">Amount (AUD, incl. GST)</label>
           <div class="amount-wrap">
@@ -1222,7 +1211,7 @@
           <div class="gst-row" id="prev-claim-row" style="display:none;"><span class="key">GST claimable</span><span class="val" id="prev-claim">$0.00</span></div>
         </div>
         <div class="btn-row">
-          <button class="btn btn-secondary" onclick="goStep(3)">← Back</button>
+          <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
           <button class="btn btn-primary" id="save-btn" onclick="saveEntry()" disabled>💾 Save Entry</button>
         </div>
       </div>
@@ -1231,48 +1220,21 @@
     <!-- ══ BULK ENTRY MODE ══ -->
     <div id="mode-bulk" style="display:none;">
 
-      <!-- Period selector for bulk -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;">
-        <div>
-          <div class="entry-label">Financial Year</div>
-          <select id="bulk-fy" class="fy-select" style="width:100%;border-radius:var(--radius);" onchange="onEntryFYChange(this.value)"></select>
-        </div>
-        <div>
-          <div class="entry-label">Quarter</div>
-          <select id="bulk-quarter" class="fy-select" style="width:100%;border-radius:var(--radius);">
-            <option value="Q1">Q1 Jul–Sep</option>
-            <option value="Q2">Q2 Oct–Dec</option>
-            <option value="Q3">Q3 Jan–Mar</option>
-            <option value="Q4">Q4 Apr–Jun</option>
-          </select>
-        </div>
-        <div>
-          <div class="entry-label">Month</div>
-          <select id="bulk-month" class="fy-select" style="width:100%;border-radius:var(--radius);">
-            <option value="July">July</option>
-            <option value="August">August</option>
-            <option value="September">September</option>
-            <option value="October">October</option>
-            <option value="November">November</option>
-            <option value="December">December</option>
-            <option value="January">January</option>
-            <option value="February">February</option>
-            <option value="March">March</option>
-            <option value="April">April</option>
-            <option value="May">May</option>
-            <option value="June">June</option>
-          </select>
-        </div>
+      <!-- Date picker for bulk — applies to all rows -->
+      <div style="margin-bottom:20px;">
+        <div class="entry-label">Date <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(applies to all rows — each row can have its own date too)</span></div>
+        <input class="input-field" id="bulk-date" type="date" style="margin-bottom:6px;" oninput="onBulkDateChange(this.value)" />
+        <div id="bulk-date-derived" style="font-size:12px;color:var(--accent);font-family:'Syne',sans-serif;font-weight:600;min-height:16px;"></div>
       </div>
 
       <!-- Bulk rows table -->
       <div class="bulk-table-wrap">
-        <div class="bulk-table-header">
+        <div class="bulk-table-header" style="grid-template-columns:100px 80px 90px 1fr 80px 32px;">
+          <span>Date</span>
           <span>Type</span>
           <span>Platform</span>
           <span>Category</span>
           <span>Amount $</span>
-          <span>Notes</span>
           <span></span>
         </div>
         <div id="bulk-rows"></div>
@@ -1515,8 +1477,49 @@ function getCurrentFY() {
 
 let selectedFY  = getCurrentFY(); // defaults to current FY
 
-// ─── FINANCIAL YEAR HELPERS (continued) ─────────────────────────
-// Returns "2024-25" style string from start year
+// ─── DATE → FY / QUARTER / MONTH HELPER ─────────────────────────
+// Takes a date string "YYYY-MM-DD" and returns { fy, quarter, month }
+function dateToFYQM(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00'); // avoid timezone shift
+  const month = d.getMonth(); // 0=Jan
+  const year  = d.getFullYear();
+  const MONTH_NAMES = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December'];
+  const monthName = MONTH_NAMES[month];
+
+  // Australian FY: Jul(6)–Jun(5)
+  // Q1: Jul–Sep (6,7,8), Q2: Oct–Dec (9,10,11), Q3: Jan–Mar (0,1,2), Q4: Apr–Jun (3,4,5)
+  let quarter, fy;
+  if (month >= 6 && month <= 8)  { quarter = 'Q1'; fy = year; }
+  else if (month >= 9)            { quarter = 'Q2'; fy = year; }
+  else if (month <= 2)            { quarter = 'Q3'; fy = year - 1; }
+  else                            { quarter = 'Q4'; fy = year - 1; }
+
+  return { fy, quarter, month: monthName };
+}
+
+// Called when user changes the date in single entry step 1
+window.onEntryDateChange = (val) => {
+  const derived = dateToFYQM(val);
+  const label   = document.getElementById('entry-date-derived');
+  if (!derived) { if (label) label.textContent = ''; return; }
+  selectedFY  = derived.fy;
+  selQuarter  = derived.quarter;
+  selMonth    = derived.month;
+  if (label) label.textContent = `→ ${derived.quarter} · ${derived.month} · FY ${fyLabel(derived.fy)}`;
+  // Enable next only if type is also selected
+  const btn = document.getElementById('step1-next');
+  if (btn) btn.disabled = !selType;
+};
+
+// Called when user changes the default date in bulk mode
+window.onBulkDateChange = (val) => {
+  const derived = dateToFYQM(val);
+  const label   = document.getElementById('bulk-date-derived');
+  if (!derived) { if (label) label.textContent = ''; return; }
+  if (label) label.textContent = `→ ${derived.quarter} · ${derived.month} · FY ${fyLabel(derived.fy)}`;
+};
 function fyLabel(startYear) {
   return `${startYear}–${String(startYear + 1).slice(2)}`;
 }
@@ -1774,16 +1777,18 @@ window.selectMonth = (m, el) => {
 
 window.selectType = (type, el) => {
   selType = type; selPlatform = null; selCategory = null;
-  document.querySelectorAll('#step-2 .choice-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#step-1 .choice-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
-  document.getElementById('step2-next').disabled = false;
+  // Enable next only if date is also set
+  const dateVal = document.getElementById('entry-date')?.value;
+  document.getElementById('step1-next').disabled = !dateVal;
   document.getElementById('category-select').innerHTML = '<option value="">Select platform first…</option>';
-  document.getElementById('step3-next').disabled = true;
+  document.getElementById('step2-next').disabled = true;
 };
 
 window.selectPlatform = (p, el) => {
   selPlatform = p; selCategory = null;
-  document.querySelectorAll('#step-3 .choice-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#step-2 .choice-btn').forEach(b=>b.classList.remove('selected'));
   el.classList.add('selected');
   const cats = (CATEGORIES[p]||{})[selType]||[];
   const sel = document.getElementById('category-select');
@@ -1791,21 +1796,22 @@ window.selectPlatform = (p, el) => {
     cats.map(c=>`<option value="${c}">${c}</option>`).join('');
   sel.onchange = () => {
     selCategory = sel.value;
-    document.getElementById('step3-next').disabled = !selCategory;
+    document.getElementById('step2-next').disabled = !selCategory;
   };
-  document.getElementById('step3-next').disabled = true;
+  document.getElementById('step2-next').disabled = true;
 };
 
 window.goStep = (n) => {
   document.querySelectorAll('.entry-step').forEach(s=>s.classList.remove('active'));
   document.getElementById('step-'+n).classList.add('active');
-  for(let i=1;i<=4;i++){
+  for(let i=1;i<=3;i++){
     const p = document.getElementById('spill-'+i);
+    if (!p) continue;
     if(i<n) p.className='step-pill done';
     else if(i===n) p.className='step-pill active';
     else p.className='step-pill';
   }
-  if(n===4) {
+  if(n===3) {
     calcPreview();
     document.getElementById('preview-panel').style.display='block';
   }
@@ -1842,25 +1848,26 @@ function resetEntry() {
   document.getElementById('step-1').classList.add('active');
   document.querySelectorAll('.step-pill').forEach((p,i)=>p.className='step-pill'+(i===0?' active':''));
   document.querySelectorAll('.choice-btn').forEach(b=>b.classList.remove('selected'));
-  document.querySelectorAll('.month-tab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('month-label').style.display='none';
-  document.getElementById('month-tabs').innerHTML='';
   document.getElementById('step1-next').disabled=true;
   document.getElementById('step2-next').disabled=true;
-  document.getElementById('step3-next').disabled=true;
   document.getElementById('save-btn').disabled=true;
   document.getElementById('amount-input').value='';
   document.getElementById('notes-input').value='';
   document.getElementById('preview-panel').style.display='none';
+  // Default date to today
+  const today = new Date().toISOString().split('T')[0];
+  const dateEl = document.getElementById('entry-date');
+  if (dateEl) { dateEl.value = today; onEntryDateChange(today); }
+  // Reset bulk date to today too
+  const bulkDateEl = document.getElementById('bulk-date');
+  if (bulkDateEl) { bulkDateEl.value = today; onBulkDateChange(today); }
   // Reset mode to single
   switchEntryMode('single');
-  buildEntryFYSelector();
   buildBulkFYSelector();
-  initQuarterChoices();
-  // Reset bulk
+  // Reset bulk rows
   document.getElementById('bulk-rows').innerHTML = '';
   updateBulkSummary();
-  addBulkRow(); // start with one empty row
+  addBulkRow();
 }
 
 // ─── ENTRY MODE SWITCHER ──────────────────────────────────────────
@@ -1900,37 +1907,36 @@ function getCatsForBulkRow(platform, type) {
 }
 
 window.addBulkRow = () => {
-  const id = ++bulkRowId;
-  const row = document.createElement('div');
-  row.className = 'bulk-row';
+  const id    = ++bulkRowId;
+  const today = new Date().toISOString().split('T')[0];
+  // Use bulk header date if set, else today
+  const bulkDate = document.getElementById('bulk-date')?.value || today;
+  const row   = document.createElement('div');
+  row.className = 'bulk-row income-row';
   row.id = 'bulk-row-' + id;
+  row.style.gridTemplateColumns = '100px 80px 90px 1fr 80px 32px';
 
-  // Build category options from uber/income as default
   const catOpts = getCatsForBulkRow('uber','income')
     .map(c => `<option value="${c}">${c}</option>`).join('');
 
   row.innerHTML = `
+    <input type="date" class="bulk-date-row" value="${bulkDate}" style="font-size:11px;" />
     <select class="bulk-type" onchange="onBulkTypeChange(${id},this)">
-      <option value="income">📈 Income</option>
-      <option value="expense">📉 Expense</option>
+      <option value="income">📈 Inc</option>
+      <option value="expense">📉 Exp</option>
     </select>
     <select class="bulk-platform" onchange="onBulkPlatformChange(${id},this)">
       <option value="uber">Uber</option>
       <option value="didi">DiDi</option>
       <option value="other">Other</option>
     </select>
-    <select class="bulk-category" id="bulk-cat-${id}">
-      ${catOpts}
-    </select>
+    <select class="bulk-category" id="bulk-cat-${id}">${catOpts}</select>
     <input type="number" class="bulk-amount" placeholder="0.00" step="0.01" min="0"
       oninput="updateBulkSummary()" />
-    <input type="text" class="bulk-notes" placeholder="Notes…" />
     <button class="bulk-del" onclick="removeBulkRow(${id})">✕</button>
   `;
-  row.classList.add('income-row');
   document.getElementById('bulk-rows').appendChild(row);
   updateBulkSummary();
-  // Focus the amount field of the new row
   row.querySelector('.bulk-amount').focus();
 };
 
@@ -1988,22 +1994,26 @@ function updateBulkSummary() {
 }
 
 window.saveBulkEntries = async () => {
-  const fy      = parseInt(document.getElementById('bulk-fy').value) || selectedFY || getCurrentFY();
-  const quarter = document.getElementById('bulk-quarter').value;
-  const month   = document.getElementById('bulk-month').value;
-  const rows    = document.querySelectorAll('#bulk-rows .bulk-row');
-  const btn     = document.getElementById('bulk-save-btn');
+  const rows = document.querySelectorAll('#bulk-rows .bulk-row');
+  const btn  = document.getElementById('bulk-save-btn');
+  const defaultDate = document.getElementById('bulk-date')?.value ||
+                      new Date().toISOString().split('T')[0];
 
   const entries = [];
   rows.forEach(row => {
     const amount   = parseFloat(row.querySelector('.bulk-amount')?.value);
-    if (!amount || amount <= 0) return; // skip empty rows
+    if (!amount || amount <= 0) return;
+    const dateStr  = row.querySelector('.bulk-date-row')?.value || defaultDate;
+    const derived  = dateToFYQM(dateStr) || dateToFYQM(defaultDate);
     const type     = row.querySelector('.bulk-type').value;
     const platform = row.querySelector('.bulk-platform').value;
     const category = row.querySelector('.bulk-category')?.value || '';
-    const notes    = row.querySelector('.bulk-notes')?.value || '';
-    const gst      = calcGST(amount, category, type, quarter);
-    entries.push({ fy, quarter, month, type, platform, category, amount, gst, notes, ts: Date.now() });
+    const gst      = calcGST(amount, category, type, derived.quarter);
+    entries.push({
+      fy: derived.fy, quarter: derived.quarter, month: derived.month,
+      date: dateStr, type, platform, category, amount, gst,
+      notes: '', ts: Date.now()
+    });
   });
 
   if (entries.length === 0) { showToast('No valid entries to save', 'error'); return; }
@@ -2012,8 +2022,7 @@ window.saveBulkEntries = async () => {
   btn.textContent = `Saving ${entries.length} entries…`;
 
   try {
-    const col = db.collection('users').doc(currentUser.uid).collection('entries');
-    // Save all in parallel
+    const col   = db.collection('users').doc(currentUser.uid).collection('entries');
     const saved = await Promise.all(entries.map(async e => {
       const ref = await col.add(e);
       return { id: ref.id, ...e };
@@ -2097,7 +2106,13 @@ window.selectEntryQuarter = (qid) => {
 // ─── RECORDS ──────────────────────────────────────────────────────
 function renderRecords() {
   // Start with entries for selected FY only
-  let entries = entriesForFY(selectedFY || getCurrentFY()).sort((a,b)=>b.ts-a.ts);
+  let entries = entriesForFY(selectedFY || getCurrentFY())
+    .sort((a,b) => {
+      // Sort by date string if available, else by timestamp
+      const da = a.date || new Date(a.ts).toISOString().split('T')[0];
+      const db_ = b.date || new Date(b.ts).toISOString().split('T')[0];
+      return db_ > da ? 1 : db_ < da ? -1 : b.ts - a.ts;
+    });
   if(filterMode!=='all') {
     entries = entries.filter(e=>
       (filterMode==='income'&&e.type==='income')||
@@ -2120,7 +2135,9 @@ function renderRecords() {
           <div class="record-badge badge-${e.platform}" style="margin-bottom:4px;">${e.platform}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${e.category}</div>
         </span>
-        <span class="col-month" style="font-size:11px;color:var(--text-muted);">${e.quarter} · ${e.month}</span>
+        <span class="col-month" style="font-size:11px;color:var(--text-muted);">
+          ${e.date ? `<strong style="color:var(--text);">${e.date}</strong><br>` : ''}${e.quarter} · ${e.month}
+        </span>
         <span class="${e.type==='income'?'record-amount-pos':'record-amount-neg'}">${fmt(e.amount)}</span>
         <span style="font-size:12px;color:var(--text-muted);">GST ${fmt(e.gst)}</span>
         <button class="record-del" onclick="deleteEntry('${e.id}')">✕</button>
@@ -2255,12 +2272,14 @@ window.saveProfile = async () => {
 
 // ─── SAVE ENTRY ───────────────────────────────────────────────────
 window.saveEntry = async () => {
-  const amount = parseFloat(document.getElementById('amount-input').value);
-  const notes  = document.getElementById('notes-input').value;
-  const gst    = calcGST(amount, selCategory, selType, selQuarter);
-  const entry  = {
-    fy: selectedFY || getCurrentFY(),
-    quarter: selQuarter, month: selMonth, type: selType,
+  const amount  = parseFloat(document.getElementById('amount-input').value);
+  const notes   = document.getElementById('notes-input').value;
+  const dateStr = document.getElementById('entry-date').value;
+  const derived = dateToFYQM(dateStr) || { fy: getCurrentFY(), quarter: selQuarter, month: selMonth };
+  const gst     = calcGST(amount, selCategory, selType, derived.quarter);
+  const entry   = {
+    fy: derived.fy, quarter: derived.quarter, month: derived.month,
+    date: dateStr, type: selType,
     platform: selPlatform, category: selCategory,
     amount, gst, notes, ts: Date.now()
   };
