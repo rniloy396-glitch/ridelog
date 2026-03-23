@@ -2254,26 +2254,15 @@ window.saveEntry = async () => {
 };
 
 // ─── FIREBASE CONFIG ──────────────────────────────────────────────
-// If you've hardcoded your keys below, great — they'll be used directly.
-// If still placeholder, the app shows a setup screen instead of hanging.
-// Keys can also be saved via the setup screen and stored in localStorage.
-
-const HARDCODED_CONFIG = {
-  apiKey:            "AIzaSyDrFs261VZg4yD27Sq-RV13echO-_vO68w",
-  authDomain:        "ridelog.vercel.app",
-  projectId:         "ridelog-8b563",
-  storageBucket:     "ridelog-8b563.firebasestorage.app",
-  messagingSenderId: "432578574488",
-  appId:             "1:432578574488:web:2f784f913ad16ef15f78ed",
-  measurementId:     "G-G387BPFS12"
-};
+// Config is loaded from /api/config (Vercel serverless function)
+// which reads from environment variables — keys never appear in HTML.
+// Falls back to localStorage if previously saved via setup screen.
 
 function isPlaceholderConfig(cfg) {
-  return !cfg || cfg.apiKey.startsWith('YOUR_') || cfg.projectId.startsWith('YOUR_');
+  return !cfg || !cfg.apiKey || cfg.apiKey.startsWith('YOUR_');
 }
 
-function getFirebaseConfig() {
-  // 1. Try localStorage (saved via setup screen)
+function getStoredConfig() {
   const stored = localStorage.getItem('ridelog_fb');
   if (stored) {
     try {
@@ -2281,9 +2270,24 @@ function getFirebaseConfig() {
       if (!isPlaceholderConfig(parsed)) return parsed;
     } catch(e) {}
   }
-  // 2. Fall back to hardcoded
-  if (!isPlaceholderConfig(HARDCODED_CONFIG)) return HARDCODED_CONFIG;
-  // 3. Nothing valid — return null
+  return null;
+}
+
+async function getFirebaseConfig() {
+  // 1. Try localStorage first (setup screen saves here)
+  const stored = getStoredConfig();
+  if (stored) return stored;
+
+  // 2. Try fetching from Vercel API endpoint
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const cfg = await res.json();
+      if (!isPlaceholderConfig(cfg)) return cfg;
+    }
+  } catch(e) {}
+
+  // 3. Nothing found — show setup screen
   return null;
 }
 
@@ -2316,20 +2320,21 @@ function initFirebase() {
     showToast('Connection timed out — check your internet', 'error');
   }, 8000);
 
-  const config = getFirebaseConfig();
+  // Config is now async (fetched from /api/config)
+  getFirebaseConfig().then(config => {
 
-  if (!config) {
-    clearTimeout(timeout);
-    hideLoading();
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-setup').classList.add('active');
-    return;
-  }
+    if (!config) {
+      clearTimeout(timeout);
+      hideLoading();
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-setup').classList.add('active');
+      return;
+    }
 
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(config);
-    auth = firebase.auth();
-    db   = firebase.firestore();
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(config);
+      auth = firebase.auth();
+      db   = firebase.firestore();
 
     window.signInWithGoogle = async () => {
       try {
@@ -2469,6 +2474,13 @@ function initFirebase() {
     showToast('Firebase error: ' + e.message, 'error');
     showScreen('login');
   }
+
+  }).catch(e => {
+    clearTimeout(timeout);
+    hideLoading();
+    showToast('Could not load config. Check your connection.', 'error');
+    showScreen('login');
+  });
 }
 
 function updateAvatars(user) {
