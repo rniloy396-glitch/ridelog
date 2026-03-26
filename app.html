@@ -2543,9 +2543,7 @@ function initFirebase() {
       appEntries = []; appProfile = { abn:'', quarterPcts: defaultQuarterPcts() };
       currentUser = null;
       closeDrawer();
-      document.getElementById('app-nav').style.display = 'none';
-      document.getElementById('bottom-tabs').style.display = 'none';
-      showScreen('login');
+      window.location.href = 'https://ridelog.com.au';
     };
 
     auth.onAuthStateChanged(async user => {
