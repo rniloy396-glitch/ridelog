@@ -994,13 +994,7 @@
   </div>
 </div>
 
-<!-- ─── GOOGLE ADSENSE ───────────────────────────────────────────────
-  Add your AdSense script here AFTER you get approved.
-  Replace YOUR_ADSENSE_PUBLISHER_ID with your real pub-XXXXXXXXXXXXXXXX.
-  Leave this commented out until then — the placeholder URL causes errors.
-
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_PUBLISHER_ID" crossorigin="anonymous"></script>
-──────────────────────────────────────────────────────────────────────-->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2090395318950241" crossorigin="anonymous"></script>
 
 <!-- ─── TOAST ─── -->
 <div id="toast"></div>
@@ -1020,7 +1014,7 @@
   </div>
 
   <!-- Back to home link -->
-  <a href="./index.html" style="position:absolute;top:20px;left:24px;z-index:10;display:flex;align-items:center;gap:6px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent);text-decoration:none;background:var(--surface);padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);box-shadow:var(--shadow-sm);transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+  <a href="https://ridelog.com.au" style="position:absolute;top:20px;left:24px;z-index:10;display:flex;align-items:center;gap:6px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent);text-decoration:none;background:var(--surface);padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);box-shadow:var(--shadow-sm);transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
     Back to home
   </a>
@@ -1182,6 +1176,11 @@
         <div class="entry-label">Category</div>
         <div class="select-wrap">
           <select id="category-select"><option value="">Select platform first…</option></select>
+        </div>
+        <div id="other-expense-wrap" style="display:none;margin-top:12px;">
+          <label class="form-label">Describe this expense <span style="color:var(--danger);">*</span></label>
+          <input class="input-field" id="other-expense-desc" placeholder="e.g. Toll tag annual fee, parking permit…" style="margin-bottom:0;" oninput="validateOtherExpense()" />
+          <div class="form-hint">Required for Other expenses — will appear in your records.</div>
         </div>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
@@ -1594,7 +1593,8 @@ const CATEGORIES = {
       // Common
       "Vehicle: Fuel/EV","Vehicle: Registration","Vehicle: Insurance","Vehicle: Repairs","Vehicle: Car Wash",
       "Admin: Mobile Phone","Admin: Internet","Admin: Music Subscriptions","Admin: Stationery",
-      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses"
+      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses",
+      "Other: Other Expense"
     ]
   },
   didi: {
@@ -1609,7 +1609,8 @@ const CATEGORIES = {
       // Common
       "Vehicle: Fuel/EV","Vehicle: Registration","Vehicle: Insurance","Vehicle: Repairs","Vehicle: Car Wash",
       "Admin: Mobile Phone","Admin: Internet","Admin: Music Subscriptions","Admin: Stationery",
-      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses"
+      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses",
+      "Other: Other Expense"
     ]
   },
   other: {
@@ -1617,7 +1618,8 @@ const CATEGORIES = {
     expense: [
       "Vehicle: Fuel/EV","Vehicle: Registration","Vehicle: Insurance","Vehicle: Repairs","Vehicle: Car Wash",
       "Admin: Mobile Phone","Admin: Internet","Admin: Music Subscriptions","Admin: Stationery",
-      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses"
+      "Driver: Dashcams","Driver: Tools","Driver: Parking","Driver: Rider Amenities","Driver: Sanitisation","Driver: Sunglasses",
+      "Other: Other Expense"
     ]
   }
 };
@@ -1630,9 +1632,11 @@ const QUARTERS = [
 ];
 
 // Business use % categories
-const VEHICLE_CATS  = ['Vehicle: Fuel/EV','Vehicle: Registration','Vehicle: Insurance','Vehicle: Repairs','Vehicle: Car Wash'];
+// Registration excluded — no GST component on vehicle registration in Australia
+const VEHICLE_CATS  = ['Vehicle: Fuel/EV','Vehicle: Insurance','Vehicle: Repairs','Vehicle: Car Wash'];
 const PHONE_CATS    = ['Admin: Mobile Phone'];
 const INTERNET_CATS = ['Admin: Internet'];
+const NO_GST_CATS   = ['Vehicle: Registration']; // no GST — exempt from GST calculation
 
 // ─── HELPERS ─────────────────────────────────────────────────────
 window.showToast = (msg, type='success') => {
@@ -1656,6 +1660,8 @@ function getBusinessPct(cat, quarter) {
 }
 
 function calcGST(amount, cat, type, quarter) {
+  // Registration has no GST in Australia
+  if (NO_GST_CATS.includes(cat)) return 0;
   const gst = amount / 11;
   if (type === 'income') return gst;
   const pct = getBusinessPct(cat, quarter);
@@ -1796,9 +1802,23 @@ window.selectPlatform = (p, el) => {
     cats.map(c=>`<option value="${c}">${c}</option>`).join('');
   sel.onchange = () => {
     selCategory = sel.value;
-    document.getElementById('step2-next').disabled = !selCategory;
+    const isOther = selCategory === 'Other: Other Expense';
+    const wrap = document.getElementById('other-expense-wrap');
+    if (wrap) wrap.style.display = isOther ? 'block' : 'none';
+    if (!isOther) {
+      document.getElementById('step2-next').disabled = !selCategory;
+    } else {
+      // Need description too
+      validateOtherExpense();
+    }
   };
   document.getElementById('step2-next').disabled = true;
+  document.getElementById('other-expense-wrap').style.display = 'none';
+};
+
+window.validateOtherExpense = () => {
+  const desc = document.getElementById('other-expense-desc')?.value.trim();
+  document.getElementById('step2-next').disabled = !desc;
 };
 
 window.goStep = (n) => {
@@ -1854,6 +1874,10 @@ function resetEntry() {
   document.getElementById('amount-input').value='';
   document.getElementById('notes-input').value='';
   document.getElementById('preview-panel').style.display='none';
+  const otherWrap = document.getElementById('other-expense-wrap');
+  if (otherWrap) otherWrap.style.display = 'none';
+  const otherDesc = document.getElementById('other-expense-desc');
+  if (otherDesc) otherDesc.value = '';
   // Default date to today
   const today = new Date().toISOString().split('T')[0];
   const dateEl = document.getElementById('entry-date');
@@ -2023,12 +2047,30 @@ window.saveBulkEntries = async () => {
 
   try {
     const col   = db.collection('users').doc(currentUser.uid).collection('entries');
-    const saved = await Promise.all(entries.map(async e => {
+
+    // Build full list including auto-mirrored expense entries
+    const AUTO_MIRROR_CATS = ['Transportation: Booking Fees'];
+    const allEntries = [];
+    entries.forEach(e => {
+      allEntries.push(e);
+      if (e.type === 'income' && AUTO_MIRROR_CATS.includes(e.category)) {
+        const expGst = calcGST(e.amount, 'Uber: Booking Fees', 'expense', e.quarter);
+        allEntries.push({
+          ...e, type: 'expense', category: 'Uber: Booking Fees',
+          gst: expGst,
+          notes: 'Auto-created — mirrors Booking Fees income entry',
+          ts: e.ts + 1
+        });
+      }
+    });
+
+    const saved = await Promise.all(allEntries.map(async e => {
       const ref = await col.add(e);
       return { id: ref.id, ...e };
     }));
     saved.forEach(e => appEntries.push(e));
-    showToast(`${saved.length} entries saved! ✓`, 'success');
+    const mirrored = saved.length - entries.length;
+    showToast(`${entries.length} entries saved${mirrored ? ` + ${mirrored} auto-mirrored` : ''} ✓`, 'success');
     closeDrawer();
     renderDashboard();
   } catch(e) {
@@ -2205,7 +2247,7 @@ function buildPctAccordion() {
               oninput="updateChip('${q.id}','vehicle',this.value)" />
             <div class="slider-val" id="val-${q.id}-vehicle">${qp.vehicle}%</div>
           </div>
-          <div class="form-hint">Applies to: Fuel, Registration, Insurance, Repairs, Car Wash</div>
+          <div class="form-hint">Applies to: Fuel/EV, Insurance, Repairs, Car Wash (Registration excluded — no GST)</div>
         </div>
         <div class="form-group">
           <label class="form-label">Mobile Phone %</label>
@@ -2273,21 +2315,52 @@ window.saveProfile = async () => {
 // ─── SAVE ENTRY ───────────────────────────────────────────────────
 window.saveEntry = async () => {
   const amount  = parseFloat(document.getElementById('amount-input').value);
-  const notes   = document.getElementById('notes-input').value;
   const dateStr = document.getElementById('entry-date').value;
   const derived = dateToFYQM(dateStr) || { fy: getCurrentFY(), quarter: selQuarter, month: selMonth };
   const gst     = calcGST(amount, selCategory, selType, derived.quarter);
-  const entry   = {
+  const otherDesc = selCategory === 'Other: Other Expense'
+    ? (document.getElementById('other-expense-desc')?.value.trim() || '')
+    : '';
+  const notesInput = document.getElementById('notes-input').value;
+  const notes = otherDesc
+    ? (notesInput ? `${otherDesc} — ${notesInput}` : otherDesc)
+    : notesInput;
+
+  const entry = {
     fy: derived.fy, quarter: derived.quarter, month: derived.month,
     date: dateStr, type: selType,
     platform: selPlatform, category: selCategory,
     amount, gst, notes, ts: Date.now()
   };
+
   try {
-    const ref = await db.collection('users').doc(currentUser.uid).collection('entries').add(entry);
+    const col = db.collection('users').doc(currentUser.uid).collection('entries');
+    const ref = await col.add(entry);
     entry.id = ref.id;
     appEntries.push(entry);
-    showToast('Entry saved!');
+
+    // ── AUTO MIRROR: Booking Fees income → matching expense ──────
+    // Uber pays Booking Fees to the driver as income but also deducts
+    // them as a platform fee — both sides must be recorded.
+    const AUTO_MIRROR_CATS = ['Transportation: Booking Fees'];
+    if (selType === 'income' && AUTO_MIRROR_CATS.includes(selCategory)) {
+      const expGst   = calcGST(amount, 'Uber: Booking Fees', 'expense', derived.quarter);
+      const expEntry = {
+        fy: derived.fy, quarter: derived.quarter, month: derived.month,
+        date: dateStr, type: 'expense',
+        platform: selPlatform, category: 'Uber: Booking Fees',
+        amount, gst: expGst,
+        notes: 'Auto-created — mirrors Booking Fees income entry',
+        ts: Date.now() + 1
+      };
+      const expRef = await col.add(expEntry);
+      expEntry.id = expRef.id;
+      appEntries.push(expEntry);
+      showToast('Entry saved + matching expense auto-added ✓');
+    } else {
+      showToast('Entry saved!');
+    }
+
     closeDrawer();
     renderDashboard();
   } catch(e){ showToast('Error: '+e.message,'error'); }
