@@ -1338,6 +1338,7 @@
         <div class="profile-info">
           <h2 id="profile-name">Loading…</h2>
           <p id="profile-email">–</p>
+          <div id="profile-member-badge" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:var(--accent-light);border:1px solid rgba(14,165,233,0.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--accent);font-family:'Syne',sans-serif;"></div>
         </div>
       </div>
       <div class="form-group">
@@ -2311,6 +2312,14 @@ function renderProfile() {
   document.getElementById('profile-name').textContent  = currentUser.displayName||'Driver';
   document.getElementById('profile-email').textContent = currentUser.email||'';
   document.getElementById('profile-abn').value         = appProfile.abn||'';
+  // Show membership badge
+  const badge = document.getElementById('profile-member-badge');
+  if (badge && appProfile.memberNumber) {
+    badge.style.display = 'inline-flex';
+    badge.innerHTML = `🎫 ${appProfile.memberNumber}${appProfile.memberSince ? ' · Member since ' + appProfile.memberSince : ''}`;
+  } else if (badge) {
+    badge.style.display = 'none';
+  }
   buildPctAccordion();
 }
 
@@ -2591,6 +2600,14 @@ function initFirebase() {
           appEntries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch(e) {}
         showScreen('dashboard');
+        // New user — never completed onboarding
+        if (!appProfile.onboardingComplete) {
+          showOnboardingModal(user);
+        }
+        // Existing user — onboarding done but missing critical fields
+        else if (!appProfile.abn || !appProfile.memberNumber) {
+          showIncompleteProfilePrompt(user);
+        }
       } else {
         currentUser = null;
         showScreen('login');
@@ -2678,6 +2695,174 @@ window.switchAuthTab = (tab) => {
     });
   }
 })();
+
+// ─── ONBOARDING MODAL ────────────────────────────────────────────
+
+function generateMemberNumber() {
+  const base = Date.now().toString().slice(-4);
+  const rand = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+  return 'RL-' + base + rand;
+}
+
+function showOnboardingModal(user) {
+  const overlay = document.getElementById('onboarding-overlay');
+  if (!overlay) return;
+  if (!appProfile.memberNumber) appProfile.memberNumber = generateMemberNumber();
+  document.getElementById('ob-member-num').textContent = appProfile.memberNumber;
+  const nameEl  = document.getElementById('ob-name');
+  const emailEl = document.getElementById('ob-email');
+  const abnEl   = document.getElementById('ob-abn');
+  if (nameEl)  nameEl.value  = user.displayName || appProfile.name || '';
+  if (emailEl) emailEl.value = user.email || '';
+  if (abnEl)   abnEl.value   = appProfile.abn || '';
+  overlay.style.display = 'flex';
+  validateOnboarding();
+  setTimeout(() => {
+    if (nameEl && !nameEl.value) { nameEl.focus(); return; }
+    if (abnEl  && !abnEl.value)  { abnEl.focus();  return; }
+  }, 100);
+}
+
+window.formatABN = (input) => {
+  let val = input.value.replace(/\D/g, '').slice(0, 11);
+  if (val.length > 9)      val = val.slice(0,2)+' '+val.slice(2,5)+' '+val.slice(5,8)+' '+val.slice(8);
+  else if (val.length > 5) val = val.slice(0,2)+' '+val.slice(2,5)+' '+val.slice(5);
+  else if (val.length > 2) val = val.slice(0,2)+' '+val.slice(2);
+  input.value = val;
+};
+
+window.validateOnboarding = () => {
+  const name = document.getElementById('ob-name')?.value.trim();
+  const abn  = document.getElementById('ob-abn')?.value.replace(/\s/g,'');
+  const btn  = document.getElementById('ob-confirm-btn');
+  const err  = document.getElementById('ob-error');
+  const valid = !!(name && abn && abn.length === 11);
+  if (btn) btn.disabled = !valid;
+  const errMsg = (abn && abn.length > 0 && abn.length !== 11) ? 'ABN must be 11 digits.' : '';
+  if (err) { err.style.display = errMsg ? 'block' : 'none'; err.textContent = errMsg; }
+};
+
+window.confirmOnboarding = async () => {
+  const name  = document.getElementById('ob-name').value.trim();
+  const abn   = document.getElementById('ob-abn').value.trim();
+  const phone = document.getElementById('ob-phone')?.value.trim() || '';
+  const btn   = document.getElementById('ob-confirm-btn');
+  if (!name || abn.replace(/\s/g,'').length !== 11) { showToast('Please fill in all required fields','error'); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (currentUser.displayName !== name) await currentUser.updateProfile({ displayName: name });
+    const profileData = {
+      name, abn, phone,
+      memberNumber: appProfile.memberNumber,
+      onboardingComplete: true,
+      memberSince: new Date().toISOString().split('T')[0],
+      quarterPcts: appProfile.quarterPcts || defaultQuarterPcts(),
+    };
+    await db.collection('users').doc(currentUser.uid).collection('profile').doc('settings').set(profileData, { merge: true });
+    appProfile = { ...appProfile, ...profileData };
+    updateAvatars({ ...currentUser, displayName: name });
+    document.getElementById('onboarding-overlay').style.display = 'none';
+    showToast(`Welcome to RideLog, ${name.split(' ')[0]}! 🎉`, 'success');
+    renderDashboard();
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Confirm & Start Tracking →';
+    showToast('Error saving profile: ' + e.message, 'error');
+  }
+};
+
+// ─── INCOMPLETE PROFILE PROMPT ───────────────────────────────────
+
+function showIncompleteProfilePrompt(user) {
+  const overlay  = document.getElementById('incomplete-overlay');
+  const fields   = document.getElementById('incomplete-fields');
+  const form     = document.getElementById('incomplete-form');
+  const subtitle = document.getElementById('incomplete-subtitle');
+  if (!overlay || !fields || !form) return;
+
+  // Work out what's missing
+  const missing = [];
+  if (!appProfile.memberNumber) missing.push({ key: 'memberNumber', label: 'Membership number', auto: true });
+  if (!appProfile.abn)          missing.push({ key: 'abn',          label: 'ABN (Australian Business Number)', auto: false });
+
+  if (missing.length === 0) return; // nothing missing, don't show
+
+  // Subtitle
+  const missingNames = missing.filter(m=>!m.auto).map(m=>m.label);
+  subtitle.textContent = missingNames.length
+    ? `Missing: ${missingNames.join(', ')}.`
+    : 'A few details need to be confirmed.';
+
+  // Missing fields list
+  fields.innerHTML = missing.map(m => `
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:6px;height:6px;border-radius:50%;background:${m.auto ? '#16a34a' : '#f97316'};flex-shrink:0;"></div>
+      <div style="font-size:13px;color:var(--text);">${m.label}
+        ${m.auto ? '<span style="font-size:11px;color:#16a34a;margin-left:6px;">will be auto-generated</span>' : '<span style="font-size:11px;color:#f97316;margin-left:6px;">required</span>'}
+      </div>
+    </div>`).join('');
+
+  // Build form inputs for non-auto fields
+  form.innerHTML = '';
+  if (!appProfile.abn) {
+    form.innerHTML += `
+      <div>
+        <label class="form-label">ABN — Australian Business Number <span style="color:var(--danger);">*</span></label>
+        <input class="input-field" id="incomplete-abn" type="text" placeholder="XX XXX XXX XXX" maxlength="14" style="margin-bottom:0;" oninput="formatABN(this)" />
+      </div>`;
+  }
+  if (!appProfile.phone) {
+    form.innerHTML += `
+      <div>
+        <label class="form-label">Phone Number <span style="font-size:10px;color:var(--text-dim);font-weight:400;">(optional)</span></label>
+        <input class="input-field" id="incomplete-phone" type="tel" placeholder="04XX XXX XXX" style="margin-bottom:0;" />
+      </div>`;
+  }
+
+  overlay.style.display = 'flex';
+}
+
+window.dismissIncompletePrompt = () => {
+  const overlay = document.getElementById('incomplete-overlay');
+  if (overlay) overlay.style.display = 'none';
+};
+
+window.saveIncompleteProfile = async () => {
+  const btn = document.getElementById('incomplete-save-btn');
+  const abnEl   = document.getElementById('incomplete-abn');
+  const phoneEl = document.getElementById('incomplete-phone');
+
+  // Validate ABN if shown
+  if (abnEl) {
+    const abn = abnEl.value.replace(/\s/g,'');
+    if (abn.length !== 11) { showToast('Please enter a valid 11-digit ABN','error'); abnEl.focus(); return; }
+    appProfile.abn = abnEl.value.trim();
+  }
+  if (phoneEl) appProfile.phone = phoneEl.value.trim();
+
+  // Auto-generate membership number if missing
+  if (!appProfile.memberNumber) {
+    appProfile.memberNumber = generateMemberNumber();
+  }
+
+  // Mark onboarding complete so this doesn't show again
+  appProfile.onboardingComplete = true;
+  if (!appProfile.memberSince) {
+    appProfile.memberSince = new Date().toISOString().split('T')[0];
+  }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    await db.collection('users').doc(currentUser.uid)
+      .collection('profile').doc('settings').set(appProfile, { merge: true });
+    dismissIncompletePrompt();
+    showToast('Profile updated ✓', 'success');
+    renderDashboard();
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Save & Complete Profile →';
+    showToast('Error: ' + e.message, 'error');
+  }
+};
 
 initFirebase();
 
@@ -2808,5 +2993,113 @@ tfoot td{font-weight:700;border-top:2px solid #e2e8f0;background:#f8fafc;}
   win.onload = () => setTimeout(() => { win.focus(); win.print(); }, 300);
 };
 </script>
+<!-- ══════════════════════════════════════════════ -->
+<!-- ONBOARDING MODAL                              -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;background:rgba(12,26,41,0.7);backdrop-filter:blur(6px);z-index:9000;align-items:center;justify-content:center;padding:20px;">
+  <div id="onboarding-modal" style="background:var(--surface);border-radius:20px;border:1.5px solid var(--border);max-width:480px;width:100%;box-shadow:0 32px 80px rgba(14,165,233,0.2);animation:fadeUp 0.4s ease forwards;overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0ea5e9,#0284c7);padding:28px 32px;position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.15) 1px,transparent 1px);background-size:20px 20px;"></div>
+      <div style="position:relative;z-index:1;">
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;">Welcome to RideLog! 🎉</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.8);">Let's set up your profile before you start tracking.</div>
+      </div>
+    </div>
+
+    <!-- Membership number badge -->
+    <div style="margin:24px 32px 0;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:4px;">Your Membership Number</div>
+        <div id="ob-member-num" style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent);letter-spacing:1px;">RL-000000</div>
+      </div>
+      <div style="width:44px;height:44px;background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#fff;box-shadow:0 4px 12px rgba(14,165,233,0.35);">RL</div>
+    </div>
+
+    <!-- Form -->
+    <div style="padding:20px 32px 28px;">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.6;">
+        Please confirm your details below. Fields marked <span style="color:var(--danger);">*</span> are required.
+      </p>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Full Name <span style="color:var(--danger);">*</span></label>
+        <input class="input-field" id="ob-name" type="text" placeholder="Your full name" style="margin-bottom:0;" oninput="validateOnboarding()" />
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">Email Address <span style="color:var(--danger);">*</span></label>
+        <input class="input-field" id="ob-email" type="email" placeholder="your@email.com" style="margin-bottom:0;background:var(--surface2);" readonly />
+        <div class="form-hint">Email cannot be changed here.</div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label">ABN — Australian Business Number <span style="color:var(--danger);">*</span></label>
+        <input class="input-field" id="ob-abn" type="text" placeholder="XX XXX XXX XXX" maxlength="14" style="margin-bottom:0;" oninput="formatABN(this);validateOnboarding()" />
+        <div class="form-hint">11-digit ABN required for GST registration as a rideshare driver.</div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:20px;">
+        <label class="form-label">Phone Number <span style="font-size:10px;color:var(--text-dim);font-weight:400;">(optional)</span></label>
+        <input class="input-field" id="ob-phone" type="tel" placeholder="04XX XXX XXX" style="margin-bottom:0;" />
+      </div>
+
+      <div id="ob-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--danger);margin-bottom:14px;"></div>
+
+      <button class="btn btn-primary btn-full" id="ob-confirm-btn" onclick="confirmOnboarding()" disabled>
+        Confirm & Start Tracking →
+      </button>
+      <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--text-dim);">
+        You can update these details anytime in Profile settings.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- INCOMPLETE PROFILE PROMPT (existing members)  -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="incomplete-overlay" style="display:none;position:fixed;inset:0;background:rgba(12,26,41,0.6);backdrop-filter:blur(4px);z-index:9000;align-items:flex-end;justify-content:center;padding:20px;">
+  <div id="incomplete-modal" style="background:var(--surface);border-radius:20px 20px 16px 16px;border:1.5px solid var(--border);max-width:480px;width:100%;box-shadow:0 -8px 40px rgba(14,165,233,0.15);animation:slideUp 0.35s cubic-bezier(0.32,0,0.15,1) forwards;overflow:hidden;margin-bottom:env(safe-area-inset-bottom);">
+
+    <!-- Top accent bar -->
+    <div style="height:4px;background:linear-gradient(90deg,#f97316,#0ea5e9);"></div>
+
+    <div style="padding:22px 24px 24px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚠️</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--text);">Your profile is incomplete</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="incomplete-subtitle">Some required details are missing.</div>
+          </div>
+        </div>
+        <button onclick="dismissIncompletePrompt()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;padding:4px;line-height:1;flex-shrink:0;">✕</button>
+      </div>
+
+      <!-- Missing fields list -->
+      <div id="incomplete-fields" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:8px;"></div>
+
+      <!-- Inline form for missing fields -->
+      <div id="incomplete-form" style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;"></div>
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" onclick="saveIncompleteProfile()" id="incomplete-save-btn" style="flex:1;">Save & Complete Profile →</button>
+        <button onclick="dismissIncompletePrompt()" style="padding:10px 16px;background:none;border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text-muted);font-size:13px;cursor:pointer;white-space:nowrap;">Later</button>
+      </div>
+      <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--text-dim);">You can also update these in Profile settings.</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+</style>
+
 </body>
 </html>
