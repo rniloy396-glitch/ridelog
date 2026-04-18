@@ -2324,7 +2324,12 @@ function renderProfile() {
 }
 
 window.saveProfile = async () => {
-  appProfile.abn = document.getElementById('profile-abn').value;
+  const abnVal = document.getElementById('profile-abn').value.trim();
+  if (abnVal) {
+    const check = validateABN(abnVal.replace(/\s/g,''));
+    if (!check.valid) { showToast(check.msg, 'error'); return; }
+  }
+  appProfile.abn = abnVal;
   // Read all quarter sliders
   if(!appProfile.quarterPcts) appProfile.quarterPcts = defaultQuarterPcts();
   QUARTERS.forEach(q => {
@@ -2731,14 +2736,42 @@ window.formatABN = (input) => {
   input.value = val;
 };
 
+// ATO ABN checksum validation
+// https://abr.business.gov.au/Help/AbnFormat
+function validateABN(abn) {
+  const digits = abn.replace(/\s/g, '');
+  if (!/^\d{11}$/.test(digits)) return { valid: false, msg: 'ABN must be 11 digits.' };
+  // Subtract 1 from the first digit
+  const weights = [10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
+  const d = digits.split('').map(Number);
+  d[0] -= 1;
+  const sum = d.reduce((acc, digit, i) => acc + digit * weights[i], 0);
+  if (sum % 89 !== 0) return { valid: false, msg: 'Invalid ABN — please check the number and try again.' };
+  return { valid: true, msg: '' };
+}
+
 window.validateOnboarding = () => {
-  const name = document.getElementById('ob-name')?.value.trim();
-  const abn  = document.getElementById('ob-abn')?.value.replace(/\s/g,'');
-  const btn  = document.getElementById('ob-confirm-btn');
-  const err  = document.getElementById('ob-error');
-  const valid = !!(name && abn && abn.length === 11);
+  const name   = document.getElementById('ob-name')?.value.trim();
+  const abnRaw = document.getElementById('ob-abn')?.value || '';
+  const btn    = document.getElementById('ob-confirm-btn');
+  const err    = document.getElementById('ob-error');
+  const abn    = abnRaw.replace(/\s/g,'');
+
+  let errMsg = '';
+  let valid  = false;
+
+  if (name && abn.length === 11) {
+    const check = validateABN(abn);
+    if (check.valid) {
+      valid = true;
+    } else {
+      errMsg = check.msg;
+    }
+  } else if (abn.length > 0 && abn.length < 11) {
+    errMsg = 'ABN must be 11 digits.';
+  }
+
   if (btn) btn.disabled = !valid;
-  const errMsg = (abn && abn.length > 0 && abn.length !== 11) ? 'ABN must be 11 digits.' : '';
   if (err) { err.style.display = errMsg ? 'block' : 'none'; err.textContent = errMsg; }
 };
 
@@ -2747,7 +2780,9 @@ window.confirmOnboarding = async () => {
   const abn   = document.getElementById('ob-abn').value.trim();
   const phone = document.getElementById('ob-phone')?.value.trim() || '';
   const btn   = document.getElementById('ob-confirm-btn');
-  if (!name || abn.replace(/\s/g,'').length !== 11) { showToast('Please fill in all required fields','error'); return; }
+  const abnCheck = validateABN(abn.replace(/\s/g,''));
+  if (!name) { showToast('Please enter your full name', 'error'); return; }
+  if (!abnCheck.valid) { showToast(abnCheck.msg, 'error'); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     if (currentUser.displayName !== name) await currentUser.updateProfile({ displayName: name });
@@ -2834,7 +2869,8 @@ window.saveIncompleteProfile = async () => {
   // Validate ABN if shown
   if (abnEl) {
     const abn = abnEl.value.replace(/\s/g,'');
-    if (abn.length !== 11) { showToast('Please enter a valid 11-digit ABN','error'); abnEl.focus(); return; }
+    const check = validateABN(abn);
+    if (!check.valid) { showToast(check.msg, 'error'); abnEl.focus(); return; }
     appProfile.abn = abnEl.value.trim();
   }
   if (phoneEl) appProfile.phone = phoneEl.value.trim();
